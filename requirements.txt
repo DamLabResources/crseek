@@ -1,0 +1,9 @@
+wheel>=0.22
+pytest
+biopython
+numpy
+pandas
+matplotlib
+seaborn
+scipy
+scikit-learn
