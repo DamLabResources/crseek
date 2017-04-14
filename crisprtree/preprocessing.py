@@ -40,7 +40,7 @@ class MatchingTransformer(BaseEstimator):
 
         """
 
-        check_input(X)
+        check_proto_target_input(X)
 
         encoded = []
         for row in range(X.shape[0]):
@@ -87,7 +87,7 @@ class OneHotTransformer(BaseEstimator):
 
         """
 
-        check_input(X)
+        check_proto_target_input(X)
 
         encoded = []
         for row in range(X.shape[0]):
@@ -96,7 +96,7 @@ class OneHotTransformer(BaseEstimator):
         return np.array(encoded)
 
 
-def check_input(X):
+def check_proto_target_input(X):
     """ Basic input parameter checking.
     Parameters
     ----------

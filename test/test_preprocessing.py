@@ -2,7 +2,7 @@ from crisprtree import preprocessing
 import pytest
 import numpy as np
 
-from crisprtree.preprocessing import one_hot_encode_row, check_input, match_encode_row
+from crisprtree.preprocessing import one_hot_encode_row, check_proto_target_input, match_encode_row
 
 
 class TestBasicInputs(object):
@@ -15,7 +15,7 @@ class TestBasicInputs(object):
         inp = np.array([[gRNA, hit],
                          [gRNA, hit]])
 
-        assert check_input(inp)
+        assert check_proto_target_input(inp)
 
     def test_missing_col(self):
 
@@ -25,10 +25,10 @@ class TestBasicInputs(object):
         inp = np.array([[gRNA],
                          [gRNA]])
 
-        checks = [check_input,
+        checks = [check_proto_target_input,
                   preprocessing.MatchingTransformer().transform,
                   preprocessing.OneHotTransformer().transform
-                 ]
+                  ]
 
         for check in checks:
             with pytest.raises(AssertionError):
@@ -42,10 +42,10 @@ class TestBasicInputs(object):
         inp = np.array([[gRNA, hit],
                          [gRNA, hit]])
 
-        checks = [check_input,
+        checks = [check_proto_target_input,
                   preprocessing.MatchingTransformer().transform,
                   preprocessing.OneHotTransformer().transform
-                 ]
+                  ]
 
         for check in checks:
             with pytest.raises(AssertionError):
