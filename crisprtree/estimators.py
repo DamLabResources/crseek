@@ -1,4 +1,59 @@
 from sklearn.base import BaseEstimator
+import numpy as np
+
+
+class MismatchEstimator(BaseEstimator):
+
+    def __init__(self, seed_len=4, miss_seed = 0, miss_non_seed = 3, require_pam = True):
+        """
+
+        Parameters
+        ----------
+        seed_len : int
+            The length of the seed region.
+        miss_seed : int
+            The number of mismatches allowed in the seed region.
+        miss_non_seed : int
+            The number of mismatches allowed in the non-seed region.
+        require_pam : bool
+            Must the PAM be present
+
+        Returns
+        -------
+        MismatchEstimator
+        """
+
+        self.seed_len = seed_len
+        self.miss_seed = miss_seed
+        self.miss_non_seed = miss_non_seed
+        self.require_pam = require_pam
+
+    def fit(self, X, y = None):
+        return self
+
+    def predict(self, X):
+        """
+
+        Parameters
+        ----------
+        X : array
+            Should be Nx21 as produced by preprocessing.MatchingTransformer
+        Returns
+        -------
+
+        """
+
+        seed_miss = (X[:, -(self.seed_len+1):-1] == False).sum(axis=1)
+        non_seed_miss = (X[:, :-(self.seed_len)] == False).sum(axis=1)
+
+        binders = (seed_miss <= self.miss_seed) & (non_seed_miss <= self.miss_non_seed)
+        if self.require_pam:
+            binders &= X[:, -1]
+
+        return binders
+
+
+
 
 
 class MITEstimator(BaseEstimator):
