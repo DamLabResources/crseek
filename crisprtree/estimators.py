@@ -3,6 +3,10 @@ import numpy as np
 
 
 class MismatchEstimator(BaseEstimator):
+    """
+    This estimator implements a simple "number of mismatches" determination of
+    binding.
+    """
 
     def __init__(self, seed_len=4, miss_seed = 0, miss_non_seed = 3, require_pam = True):
         """
@@ -55,9 +59,6 @@ class MismatchEstimator(BaseEstimator):
             binders &= X[:, -1]
 
         return binders
-
-
-
 
 
 class MITEstimator(BaseEstimator):
