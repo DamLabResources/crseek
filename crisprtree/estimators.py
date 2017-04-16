@@ -23,6 +23,7 @@ class MismatchEstimator(BaseEstimator):
         MismatchEstimator
         """
 
+        assert seed_len <= 20, 'seed_len cannot be longer then 20'
         self.seed_len = seed_len
         self.miss_seed = miss_seed
         self.miss_non_seed = miss_non_seed
@@ -42,6 +43,9 @@ class MismatchEstimator(BaseEstimator):
         -------
 
         """
+
+        if X.shape[1] != 21:
+            raise ValueError('Input array shape must be Nx21')
 
         seed_miss = (X[:, -(self.seed_len+1):-1] == False).sum(axis=1)
         non_seed_miss = (X[:, :-(self.seed_len)] == False).sum(axis=1)

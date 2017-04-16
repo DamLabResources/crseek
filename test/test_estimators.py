@@ -34,6 +34,21 @@ class TestMismatchEstimator(object):
 
         mod = estimators.MismatchEstimator()
 
+    def test_raises_value_error_on_wrong_size(self):
+
+        mod = estimators.MismatchEstimator()
+        check = np.ones((5, 20))
+
+        with pytest.raises(ValueError):
+            mod.predict(check)
+
+    def test_raises_assert_error_on_too_long_seed(self):
+
+        # Be defensive so we don't have an IndexError on the .predict
+        with pytest.raises(AssertionError):
+            mod = estimators.MismatchEstimator(seed_len = 21)
+
+
     def test_basic_predict(self):
 
         grna = 'A'*20
