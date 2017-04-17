@@ -26,9 +26,7 @@ class TestCheckgRNA(object):
                 'T'*15 + gRNA + 'TGG' + 'T'*5,
                 'C'*30
                 ]
-        #seqs += [reverse_complement(seq) for seq in seqs]
-
-        corr = pd.Series([True, True, False])#*2
+        corr = pd.Series([True, True, False])
 
         est = build_estimator()
 
