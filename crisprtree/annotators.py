@@ -5,6 +5,7 @@ from Bio.SeqFeature import SeqFeature, FeatureLocation
 import numpy as np
 import pandas as pd
 
+from crisprtree.utils import tile_seqrecord
 
 def annotate_gRNA_binding(grna, seq_record, estimator, extra_qualifiers=None):
     """ In-place annotatio of gRNA binding location.
@@ -26,22 +27,48 @@ def annotate_gRNA_binding(grna, seq_record, estimator, extra_qualifiers=None):
 
     """
 
-    pass
+    tiles = tile_seqrecord(grna, seq_record)
+    pred = estimator.predict(tiles.values)
+    pred_ser = pd.Series(pred, index=tiles.index)
+
+    hits = pred_ser[pred_ser]
+
+    for _, strand, left in hits.index:
+        seq_record.features.append(_build_target_feature(left, strand, grna, score=1,
+                                                         extra_quals = extra_qualifiers))
+
+    return seq_record
 
 
+def _build_target_feature(left, strand, grna, score=1, extra_quals = None):
+    """
+    Parameters
+    ----------
+    left : int
+        Left most position of the binding site
+    strand : int
+        1 or -1 indicating the positive or negative strand
+    grna : str
+        gRNA that's targetted to this location
+    score : float
+        Binding score of the gRNA to this location
+    extra_quals : dict
+        Extra qualifiers to add to the SeqFeature
 
-def _build_target_feature(start, strand, grna, score=1, extra_quals = None):
+    Returns
+    -------
+
+    SeqFeature
+
+    """
 
     if strand not in {-1, 1}:
         raise ValueError('Strand must be {1, -1}')
-
-    end = start + 23 if strand == 1 else start - 23
-    assert end >= 0, 'Cannot have a SeqFeature that goes BEFORE the start location'
 
     quals = {'gRNA': grna,
              'On Target Score': score}
     if extra_quals is not None:
         quals.update(extra_quals)
 
-    return SeqFeature(FeatureLocation(start=start, end=end, strand=strand),
+    return SeqFeature(FeatureLocation(start=left, end=left+23, strand=strand),
                       qualifiers = quals)

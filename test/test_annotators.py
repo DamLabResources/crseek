@@ -3,7 +3,8 @@ from crisprtree import estimators
 from crisprtree import evaluators
 from crisprtree import annotators
 from sklearn.pipeline import Pipeline
-from Bio.Seq import reverse_complement
+from Bio.SeqRecord import SeqRecord
+from Bio.Seq import Seq, reverse_complement
 from Bio.SeqFeature import SeqFeature
 import numpy as np
 import pandas as pd
@@ -11,6 +12,66 @@ from pandas.util.testing import assert_series_equal
 import pytest
 
 from test.test_evaluators import build_estimator
+
+
+class TestAnnotateSingle(object):
+
+    def test_basic(self):
+
+        gRNA = 'A'*20
+        seqR = SeqRecord(Seq('T'*5 + 'A'*20 + 'CGG' + 'T'*40),
+                         id = 'CheckSeq')
+
+        mod = build_estimator()
+
+        seqR = annotators.annotate_gRNA_binding(gRNA, seqR, mod)
+
+        assert len(seqR.features) == 1
+        feat = seqR.features[0]
+
+        assert feat.location.start == 5
+        assert feat.location.end == 28
+        assert feat.location.strand == 1
+        assert feat.qualifiers.get('gRNA') == 'A'*20
+        assert feat.qualifiers.get('On Target Score') == 1
+
+    def test_basic_extra_quals(self):
+
+        gRNA = 'A'*20
+        seqR = SeqRecord(Seq('T'*5 + 'A'*20 + 'CGG' + 'T'*40),
+                         id = 'CheckSeq')
+
+        mod = build_estimator()
+
+        seqR = annotators.annotate_gRNA_binding(gRNA, seqR, mod,
+                                                extra_qualifiers = {'Something': 'here'})
+
+        assert len(seqR.features) == 1
+        feat = seqR.features[0]
+
+        assert feat.qualifiers.get('gRNA') == 'A'*20
+        assert feat.qualifiers.get('On Target Score') == 1
+        assert feat.qualifiers.get('Something') == 'here'
+
+
+    def test_reverse(self):
+
+        gRNA = 'A'*20
+        seqR = SeqRecord(Seq('T'*5 + 'A'*20 + 'CGG' + 'T'*40).reverse_complement(),
+                         id = 'CheckSeq')
+        mod = build_estimator()
+
+        seqR = annotators.annotate_gRNA_binding(gRNA, seqR, mod)
+
+        assert len(seqR.features) == 1
+        feat = seqR.features[0]
+
+        assert feat.location.start == 40
+        assert feat.location.end == 63
+        assert feat.location.strand == -1
+        assert feat.qualifiers.get('gRNA') == 'A'*20
+        assert feat.qualifiers.get('On Target Score') == 1
+
 
 
 class TestSeqFeature(object):
@@ -31,16 +92,11 @@ class TestSeqFeature(object):
         feat = annotators._build_target_feature(100, -1, 'A'*20)
         assert type(feat) == type(SeqFeature())
         assert feat.location.start == 100
-        assert feat.location.end == 77
+        assert feat.location.end == 123
         assert feat.location.strand == -1
 
         assert feat.qualifiers.get('gRNA', None) == 'A'*20
         assert feat.qualifiers.get('On Target Score', None) == 1
-
-    def test_assert_error_on_early_start(self):
-
-        with pytest.raises(AssertionError):
-            annotators._build_target_feature(12, -1, 'A'*20)
 
     def test_value_error_on_bad_strand(self):
 
