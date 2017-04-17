@@ -24,7 +24,8 @@ def make_match_array_from_seqs(grna, seqs):
 
     """
 
-    seq_array = np.array(zip(cycle([grna]), seqs))
+
+    seq_array = np.array(list(zip(cycle([grna]), seqs)))
     return preprocessing.MatchingTransformer().transform(seq_array)
 
 
