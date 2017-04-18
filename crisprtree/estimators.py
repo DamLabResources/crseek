@@ -66,6 +66,10 @@ class MITEstimator(BaseEstimator):
     def __init__(self, dampening=False, cutoff = 0.75):
         self.dampening=dampening
         self.cutoff = cutoff
+        self.penalties = [0, 0, 0.014, 0, 0, 0.395, 0.317, 0,
+                          0.389, 0.079, 0.445, 0.508, 0.613,
+                          0.851, 0.732, 0.828, 0.615, 0.804,
+                          0.685, 0.583]
 
     def fit(self, X, y=None):
         return self
@@ -74,7 +78,7 @@ class MITEstimator(BaseEstimator):
 
         pass
 
-    def predict_probs(self, X):
+    def predict_proba(self, X):
 
         pass
 
