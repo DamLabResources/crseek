@@ -24,7 +24,26 @@ class TestAnnotateSingle(object):
 
         mod = build_estimator()
 
-        seqR = annotators.annotate_gRNA_binding(gRNA, seqR, mod)
+        seqR = annotators.annotate_grna_binding(gRNA, seqR, mod)
+
+        assert len(seqR.features) == 1
+        feat = seqR.features[0]
+
+        assert feat.location.start == 5
+        assert feat.location.end == 28
+        assert feat.location.strand == 1
+        assert feat.qualifiers.get('gRNA') == 'A'*20
+        assert feat.qualifiers.get('On Target Score') == 1
+
+    def test_basic_exhaustive(self):
+
+        gRNA = 'A'*20
+        seqR = SeqRecord(Seq('T'*5 + 'A'*20 + 'CGG' + 'T'*40),
+                         id = 'CheckSeq')
+
+        mod = build_estimator()
+
+        seqR = annotators.annotate_grna_binding(gRNA, seqR, mod, exhaustive = True)
 
         assert len(seqR.features) == 1
         feat = seqR.features[0]
@@ -43,7 +62,7 @@ class TestAnnotateSingle(object):
 
         mod = build_estimator()
 
-        seqR = annotators.annotate_gRNA_binding(gRNA, seqR, mod,
+        seqR = annotators.annotate_grna_binding(gRNA, seqR, mod,
                                                 extra_qualifiers = {'Something': 'here'})
 
         assert len(seqR.features) == 1
@@ -61,7 +80,7 @@ class TestAnnotateSingle(object):
                          id = 'CheckSeq')
         mod = build_estimator()
 
-        seqR = annotators.annotate_gRNA_binding(gRNA, seqR, mod)
+        seqR = annotators.annotate_grna_binding(gRNA, seqR, mod)
 
         assert len(seqR.features) == 1
         feat = seqR.features[0]

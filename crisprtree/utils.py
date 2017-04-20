@@ -1,12 +1,21 @@
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import reverse_complement
+from Bio import SeqIO
 import pandas as pd
 import numpy as np
+import shlex
+from io import StringIO, BytesIO
+from subprocess import check_call, STDOUT, check_output
+from tempfile import TemporaryDirectory, NamedTemporaryFile
+import csv
+
+import os
+
 
 
 def tile_seqrecord(grna, seq_record):
     """ Simple utility function to convert a sequence and gRNA into something
-    the preprocessing tools can seal with.
+    the preprocessing tools can deal with.
 
     Parameters
     ----------
@@ -38,3 +47,126 @@ def tile_seqrecord(grna, seq_record):
     df = pd.DataFrame(tiles)
 
     return df.groupby(['Name', 'Strand', 'Left'])[['gRNA', 'Seq']].first()
+
+
+
+def cas_offinder(gRNAs, mismatches, seqs = None, direc = None,
+                      openci_devices = 'G0', keeptmp = False):
+    """ Call the cas-offinder tool and return the relevant info
+    Parameters
+    ----------
+    gRNAs : list
+        gRNAs to search for
+    mismatches : int
+        Number of mismatches to allow
+    seqs : list
+        SeqRecords to search.
+    direc : str
+        Path to a directory containing fasta-files to search
+    openci_devices : str
+        Formatted string of device-IDs acceptable to cas-offinder
+    keeptmp : bool
+        Keep the temporary director? Useful for debugging
+
+    Returns
+    -------
+
+    pd.DataFrame
+
+    """
+
+    msg = 'Must provide either sequences or a directory path'
+    assert (seqs is not None) or (direc is not None), msg
+
+    with TemporaryDirectory() as tmpdir:
+
+        if direc is None:
+            fasta_path = os.path.join(tmpdir, 'search_seqs.fasta')
+            with open(fasta_path, 'w') as handle:
+                SeqIO.write(seqs, handle, 'fasta')
+            direc = tmpdir
+        elif (direc is not None) and (seqs is not None):
+            tmpfile = NamedTemporaryFile(dir = direc,
+                                         suffix = '.fasta',
+                                         buffering = 1,
+                                         mode = 'w')
+            SeqIO.write(seqs, tmpfile, 'fasta')
+
+        input_path = os.path.join(tmpdir, 'input.txt')
+        out_path = os.path.join(tmpdir, 'outdata.tsv')
+
+        with open(input_path, 'w') as handle:
+            handle.write(direc + '\n')
+            handle.write('NNNNNNNNNNNNNNNNNNNNNRG' + '\n')
+            for grna in gRNAs:
+                handle.write('%sNNN %i\n' % (grna, mismatches))
+
+        tdict = {'ifile': input_path,
+                 'ofile': out_path,
+                 'dev': openci_devices}
+        cmd = 'cas-offinder %(ifile)s %(dev)s %(ofile)s'
+
+        FNULL = open(os.devnull, 'w')
+        call_args = shlex.split(cmd % tdict)
+        check_call(call_args, stdout=FNULL, stderr=STDOUT)
+
+        out_res = []
+        with open(out_path) as handle:
+            reader = csv.reader(handle, delimiter='\t')
+            for row in reader:
+                out_res.append({'gRNA': row[0][:-3],
+                                'Name': row[1],
+                                'Left': int(row[2]),
+                                'Seq': row[3].upper(),
+                                'Strand': 1 if row[4] == '+' else -1})
+
+    return pd.DataFrame(out_res).groupby(['Name', 'Strand', 'Left'])[['gRNA', 'Seq']].first()
+
+
+def overlap_regions(hits, bed_path):
+    """ Utility function to overlap hits with genomic regions
+    Parameters
+    ----------
+    hits : pd.DataFrame
+        Dataframe as returned by tile_seqrecord or cas_offinder
+    bed_path : str
+        Path to bedfile of gene regions
+
+    Returns
+    -------
+
+    pd.Series
+        A boolean series with the same index as hits.
+        True indicates that the region is within a defined region.
+
+    """
+
+    if not os.path.exists(bed_path):
+        raise IOError('%s does not exist.' % bed_path)
+
+    with NamedTemporaryFile(mode = 'w',buffering = 1) as handle:
+        writer = csv.writer(handle, delimiter = '\t')
+        for name, strand, left in hits.index:
+            if strand not in {1, -1}:
+                raise TypeError('Strand must be {1, -1}, found %s' % strand)
+            if type(left) is not int:
+                raise TypeError('Left must be an integer, found %s' % type(left))
+
+            st = '+' if strand > 0 else '-'
+            writer.writerow([name, left, left+23, None, None, st])
+
+        tdict = {'genes': bed_path, 'hit': handle.name}
+        cmd = 'bedtools intersect -a %(hit)s -b %(genes)s -loj -u'
+        call_args = shlex.split(cmd % tdict)
+
+        out = check_output(call_args)
+        cols = ['Name', 'Left', 'Right', '_', '_', 'Strand']
+        df = pd.read_csv(BytesIO(out), sep='\t',
+                         header = None,
+                         names = cols)
+    df['Strand'] = df['Strand'].map(lambda x: 1 if x == '+' else -1)
+    df['Region'] = True
+    ser = df.groupby(['Name', 'Strand', 'Left'])['Region'].any()
+    _, found = hits.align(ser, axis=0, join='left')
+
+    return found.fillna(False)

@@ -5,9 +5,11 @@ from Bio.SeqFeature import SeqFeature, FeatureLocation
 import numpy as np
 import pandas as pd
 
-from crisprtree.utils import tile_seqrecord
+from crisprtree.utils import tile_seqrecord, cas_offinder
 
-def annotate_gRNA_binding(grna, seq_record, estimator, extra_qualifiers=None):
+
+def annotate_grna_binding(grna, seq_record, estimator, extra_qualifiers=None,
+                          exhaustive = False):
     """ In-place annotatio of gRNA binding location.
     Parameters
     ----------
@@ -19,6 +21,9 @@ def annotate_gRNA_binding(grna, seq_record, estimator, extra_qualifiers=None):
         Estimator to use to evaluate gRNA binding
     extra_qualifiers : dict
         Extra qualifiers to add to the SeqFeature
+    exhaustive : bool
+        If True then all positions within the seq_record are checked.
+        If False then a mismatch search is performed first.
 
     Returns
     -------
@@ -27,7 +32,11 @@ def annotate_gRNA_binding(grna, seq_record, estimator, extra_qualifiers=None):
 
     """
 
-    tiles = tile_seqrecord(grna, seq_record)
+    if exhaustive:
+        tiles = tile_seqrecord(grna, seq_record)
+    else:
+        tiles = cas_offinder([grna], 6, seqs = [seq_record])
+
     pred = estimator.predict(tiles.values)
     pred_ser = pd.Series(pred, index=tiles.index)
 
