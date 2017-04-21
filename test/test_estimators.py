@@ -149,3 +149,31 @@ class TestMismatchEstimator(object):
         res = mod.predict(match_array)
         expected = [True, True, False, False]
         np.testing.assert_array_equal(res, expected)
+
+from __future__ import division
+from crisprtree import estimators, preprocessing
+import pytest
+import numpy as np
+
+
+class TestMITEstimator(object):
+    def test_predict_proba(self):
+
+        gRNA = 'T' + 'A' * 19
+        hitA = 'A' * 20 + 'AGG'
+        hitB = 'A' * 19 + 'T' + 'CGG'
+        hitC = 'T' + 'A' * 19 + 'CGG'
+
+        inp = np.array([[gRNA, hitA],
+                        [gRNA, hitB],
+                        [gRNA, hitC]])
+
+        match_encoder = preprocessing.MatchingTransformer()
+        matchTmp = match_encoder.transform(inp)
+        MITest = estimators.MITEstimator()
+        probMIT = MITest.predict(matchTmp)
+
+        cor_prob=[True,False,True]
+        
+        np.testing.assert_equal(cor_prob[-1], probMIT[-1])
+

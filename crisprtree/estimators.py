@@ -1,3 +1,4 @@
+from __future__ import division
 from sklearn.base import BaseEstimator
 import numpy as np
 
@@ -70,17 +71,42 @@ class MITEstimator(BaseEstimator):
                           0.389, 0.079, 0.445, 0.508, 0.613,
                           0.851, 0.732, 0.828, 0.615, 0.804,
                           0.685, 0.583]
-
     def fit(self, X, y=None):
         return self
 
     def predict(self, X):
+        S = self.predict_proba(X)
+        return S >= self.cutoff
 
-        pass
 
     def predict_proba(self, X):
+        '''
 
-        pass
+        Parameters
+        ----------
+        X : np.array
+
+        Returns
+        -------
+        np.array
+            return score array S calculated based on MIT matrix, Nx1 vector
+
+        '''
+
+
+        s1=(1-(X[:,:-1]==False)*self.penalties).prod(axis=1)
+        d=(X[:,:-1]==True).sum(axis=1).mean()
+        D=1 / (((19-d)/19)*4 +1)
+
+        n=(X[:,:-1]==False).sum(axis=1)
+        # there's some hits with zero mismatch, assign to 1 for now
+        n[n==0]=1
+
+        S=s1*D*(1/n**2)
+
+        return np.array(S)
+
+    def predict_proba(self, X):
 
 
 
