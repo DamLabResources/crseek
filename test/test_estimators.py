@@ -156,8 +156,23 @@ import pytest
 import numpy as np
 
 
-class TestMITEstimator(object):
-    def test_predict_proba(self):
+class TestMITestimator(object):
+    def test_cutoff(self):
+        gRNA = 'T' + 'A' * 19
+        hitA = 'A' * 20 + 'AGG'
+        hitB = 'A'*19 + 'T' + 'CGG'
+        hitC = 'T' + 'A' * 19 + 'GGG'
+
+        inp = np.array([[gRNA, hitA],
+               [gRNA, hitB],
+               [gRNA, hitC]])
+
+        transformer = preprocessing.MatchingTransformer()
+        cor = transformer.transform(inp)
+        #print(cor.shape)
+        mitEst = estimators.MITEstimator()
+        mitCut = mitEst.predict(cor)
+        #print(mitCut)
 
         gRNA = 'T' + 'A' * 19
         hitA = 'A' * 20 + 'AGG'
