@@ -78,7 +78,6 @@ class MITEstimator(BaseEstimator):
         S = self.predict_proba(X)
         return S >= self.cutoff
 
-
     def predict_proba(self, X):
         '''
 
@@ -105,9 +104,6 @@ class MITEstimator(BaseEstimator):
         S=s1*D*(1/n**2)
 
         return np.array(S)
-
-    def predict_proba(self, X):
-
 
 
 def check_matching_input(X):
