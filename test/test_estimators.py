@@ -1,5 +1,5 @@
-from crisprtree import preprocessing
-from crisprtree import estimators
+from __future__ import division
+from crisprtree import preprocessing, estimators
 import pytest
 import numpy as np
 from itertools import cycle
@@ -150,10 +150,7 @@ class TestMismatchEstimator(object):
         expected = [True, True, False, False]
         np.testing.assert_array_equal(res, expected)
 
-from __future__ import division
-from crisprtree import estimators, preprocessing
-import pytest
-import numpy as np
+
 
 
 class TestMITestimator(object):
