@@ -10,6 +10,34 @@ import pytest
 import csv
 
 
+class TestExtract(object):
+
+    def test_basic(self):
+
+        seq = 'A'*20 + 'T'*20 + 'CCGG' + 'T'*25 + 'GG'
+
+        cor = sorted(['T'*19 + 'C' + 'CGG',
+                      'T'*20 + 'TGG',
+                      'A'*19 + 'C' + 'CGG'
+                      ])
+
+        res = utils.extract_possible_targets(SeqRecord(Seq(seq)))
+
+        assert cor == res
+
+    def test_single_strand(self):
+
+        seq = 'A'*20 + 'T'*20 + 'CCGG' + 'T'*25 + 'GG'
+
+        cor = sorted(['T'*19 + 'C' + 'CGG',
+                      'T'*20 + 'TGG',
+                      ])
+
+        res = utils.extract_possible_targets(SeqRecord(Seq(seq)), both_strands = False)
+
+        assert cor == res
+
+
 class TestTiling(object):
 
     def test_basic(self):

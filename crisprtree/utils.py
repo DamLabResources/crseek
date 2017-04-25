@@ -7,10 +7,46 @@ import shlex
 from io import StringIO, BytesIO
 from subprocess import check_call, STDOUT, check_output
 from tempfile import TemporaryDirectory, NamedTemporaryFile
+from Bio.SeqUtils import nt_search
+from Bio.Seq import reverse_complement
 import csv
 
 import os
 
+
+def extract_possible_targets(seq_record, pams = ('NGG',), both_strands = True):
+    """
+    Parameters
+    ----------
+    seq_record : SeqRecord
+        Sequence to check
+    pams : iter
+        Set of PAMs to search. Allows ambigious nucleotides.
+    both_strands : bool
+        Check both strands?
+
+    Returns
+    -------
+
+    list
+        Targets including PAM in 5-3 orientation.
+
+    """
+
+    st_seq = str(seq_record.seq)
+
+    found = set()
+    for pam in pams:
+        for res in nt_search(st_seq, pam)[1:]:
+            found.add(st_seq[res-20:res+3])
+
+    if both_strands:
+        rseq = reverse_complement(st_seq)
+        for pam in pams:
+            for res in nt_search(rseq, pam)[1:]:
+                found.add(rseq[res-20:res+3])
+
+    return sorted(found)
 
 
 def tile_seqrecord(grna, seq_record):
