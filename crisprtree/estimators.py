@@ -64,13 +64,25 @@ class MismatchEstimator(BaseEstimator):
 
 class MITEstimator(BaseEstimator):
 
-    def __init__(self, dampening=False, cutoff = 0.75):
-        self.dampening=dampening
+    def __init__(self, cutoff = 0.75):
+        """
+        Parameters
+        ----------
+        cutoff : float
+            Cutoff for calling binding
+
+        Returns
+        -------
+
+        MITEstimator
+
+        """
         self.cutoff = cutoff
         self.penalties = np.array([0, 0, 0.014, 0, 0, 0.395, 0.317, 0,
-                          0.389, 0.079, 0.445, 0.508, 0.613,
-                          0.851, 0.732, 0.828, 0.615, 0.804,
-                          0.685, 0.583])
+                                   0.389, 0.079, 0.445, 0.508, 0.613,
+                                   0.851, 0.732, 0.828, 0.615, 0.804,
+                                   0.685, 0.583])
+
     def fit(self, X, y=None):
         return self
 
@@ -79,7 +91,7 @@ class MITEstimator(BaseEstimator):
         return S >= self.cutoff
 
     def predict_proba(self, X):
-        '''
+        """
         Parameters
         ----------
         X : np.array
@@ -89,42 +101,25 @@ class MITEstimator(BaseEstimator):
         np.array
             return score array S calculated based on MIT matrix, Nx1 vector
 
-        '''
+        """
 
         if X.shape[1] != 21:
             raise ValueError('Input array shape must be Nx21')
 
-        s1 = (1-(X[:,:-1]==False)*self.penalties).prod(axis=1)
+        s1 = (1-(X[:,:-1] == np.array([False]))*self.penalties).prod(axis=1)
 
-        d = (X[:,:-1]==True).sum(axis=1)
+        d = (X[:,:-1] == np.array([True])).sum(axis=1)
         D = 1/(((19-d)/19)*4 +1)
 
-        mm = (X[:,:-1] == False).sum(axis=1)
+        mm = (X[:,:-1] == np.array([False])).sum(axis=1)
         n = mm.copy()
         # there's some hits with zero mismatch, assign to 1 for now
         n[n==0] = 1
 
-        S = s1*D*(1/n**2)
+        S = s1*D*(np.array([1])/n**2)
         S[mm==0] = 1
         S *= X[:,-1].astype(float)
 
-
         return np.array(S)
 
-
-def check_matching_input(X):
-    """
-    Parameters
-    ----------
-    X : np.array
-        Must be an Nx21 of booleans
-
-    Returns
-    -------
-    bool
-
-    """
-
-    assert X.shape[1] == 21
-    #assert np.
 
