@@ -71,6 +71,27 @@ class TestMismatchEstimator(object):
 
         np.testing.assert_array_equal(res, expected)
 
+    def test_build_pipeline(self):
+
+        grna = 'A'*20
+        hits = ['A'*20 + 'AGG',          # Perfect hit
+                'A'*19 + 'T' + 'AGG',    # One miss in seed
+                'T' + 'A'*19 + 'AGG',    # One miss outside seed
+                'TTT' + 'A'*17 + 'AGG',  # Three miss outside seed
+                'A'*20 + 'ATG'           # No PAM
+                ]
+        expected = [True, False, True, False, False]
+
+        seq_array = np.array(list(zip(cycle([grna]), hits)))
+
+        pipe = estimators.MismatchEstimator.build_pipeline(seed_len = 4,
+                                                           miss_seed = 0,
+                                                           miss_non_seed = 2,
+                                                           require_pam = True)
+
+        res = pipe.predict(seq_array)
+        np.testing.assert_array_equal(res, expected)
+
     def test_set_seed_length(self):
 
         grna = 'A'*20
@@ -183,6 +204,24 @@ class TestMITestimator(object):
 
         np.testing.assert_almost_equal(cor_prob, mit_score, decimal=3)
 
+    def test_build_pipeline(self):
+
+        grna = 'A' * 20
+        hits = ['A' * 20 + 'AGG',
+                'A'*19 + 'T' + 'CGG',
+                'T' + 'A' * 19 + 'GGG',
+                'TT' + 'A'*18 + 'GGG',
+                'A'*5 + 'TT' + 'A'*13 + 'GGG',
+                ]
+
+        seq_array = np.array(list(zip(cycle([grna]), hits)))
+
+        pipe = estimators.MITEstimator.build_pipeline()
+        mit_score = pipe.predict_proba(seq_array)
+
+        cor_prob = [1.0, 0.417, 1, 0.206, 0.0851]
+
+        np.testing.assert_almost_equal(cor_prob, mit_score, decimal=3)
 
     def test_cutoff(self):
 

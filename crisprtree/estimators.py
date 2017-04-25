@@ -1,5 +1,7 @@
 from __future__ import division
 from sklearn.base import BaseEstimator
+from sklearn.pipeline import Pipeline
+from crisprtree.preprocessing import MatchingTransformer
 import numpy as np
 
 
@@ -9,7 +11,7 @@ class MismatchEstimator(BaseEstimator):
     binding.
     """
 
-    def __init__(self, seed_len=4, miss_seed = 0, miss_non_seed = 3, require_pam = True):
+    def __init__(self, seed_len = 4, miss_seed = 0, miss_non_seed = 3, require_pam = True):
         """
 
         Parameters
@@ -33,6 +35,24 @@ class MismatchEstimator(BaseEstimator):
         self.miss_seed = miss_seed
         self.miss_non_seed = miss_non_seed
         self.require_pam = require_pam
+
+    @staticmethod
+    def build_pipeline(**kwargs):
+        """ Utility function to build a pipeline.
+        Parameters
+        ----------
+        Keyword arguements are passed to the Estimator on __init__
+
+        Returns
+        -------
+
+        Pipeline
+
+        """
+
+        pipe = Pipeline(steps = [('transform', MatchingTransformer()),
+                                 ('predict', MismatchEstimator(**kwargs))])
+        return pipe
 
     def fit(self, X, y = None):
         return self
@@ -82,6 +102,24 @@ class MITEstimator(BaseEstimator):
                                    0.389, 0.079, 0.445, 0.508, 0.613,
                                    0.851, 0.732, 0.828, 0.615, 0.804,
                                    0.685, 0.583])
+
+    @staticmethod
+    def build_pipeline(**kwargs):
+        """ Utility function to build a pipeline.
+        Parameters
+        ----------
+        Keyword arguements are passed to the Estimator on __init__
+
+        Returns
+        -------
+
+        Pipeline
+
+        """
+
+        pipe = Pipeline(steps = [('transform', MatchingTransformer()),
+                                 ('predict', MITEstimator(**kwargs))])
+        return pipe
 
     def fit(self, X, y=None):
         return self
