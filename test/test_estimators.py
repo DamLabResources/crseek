@@ -154,38 +154,74 @@ class TestMismatchEstimator(object):
 
 
 class TestMITestimator(object):
+
+    def test_raises_value_error_on_wrong_size(self):
+
+        mod = estimators.MITEstimator()
+        check = np.ones((5, 20))
+
+        with pytest.raises(ValueError):
+            mod.predict(check)
+
+
+    def test_mit_score(self):
+
+        grna = 'A' * 20
+        hits = ['A' * 20 + 'AGG',
+                'A'*19 + 'T' + 'CGG',
+                'T' + 'A' * 19 + 'GGG',
+                'TT' + 'A'*18 + 'GGG',
+                'A'*5 + 'TT' + 'A'*13 + 'GGG',
+                ]
+
+        match_array = make_match_array_from_seqs(grna, hits)
+
+        mit_est = estimators.MITEstimator()
+        mit_score = mit_est.predict_proba(match_array)
+
+        cor_prob = [1.0, 0.417, 1, 0.206, 0.0851]
+
+        np.testing.assert_almost_equal(cor_prob, mit_score, decimal=3)
+
+
     def test_cutoff(self):
-        gRNA = 'T' + 'A' * 19
-        hitA = 'A' * 20 + 'AGG'
-        hitB = 'A'*19 + 'T' + 'CGG'
-        hitC = 'T' + 'A' * 19 + 'GGG'
 
-        inp = np.array([[gRNA, hitA],
-               [gRNA, hitB],
-               [gRNA, hitC]])
+        grna = 'A' * 20
+        hits = ['A' * 20 + 'AGG',
+                'A'*19 + 'T' + 'CGG',
+                'T' + 'A' * 19 + 'GGG',
+                'TT' + 'A' * 18 + 'GGG',
+                'A'*5 + 'TT' + 'A'*13 + 'GGG'
+                ]
 
-        transformer = preprocessing.MatchingTransformer()
-        cor = transformer.transform(inp)
-        #print(cor.shape)
-        mitEst = estimators.MITEstimator()
-        mitCut = mitEst.predict(cor)
-        #print(mitCut)
+        match_array = make_match_array_from_seqs(grna, hits)
+        cor_prob = [True, False, True, False, False]
 
-        gRNA = 'T' + 'A' * 19
-        hitA = 'A' * 20 + 'AGG'
-        hitB = 'A' * 19 + 'T' + 'CGG'
-        hitC = 'T' + 'A' * 19 + 'CGG'
+        mit_est = estimators.MITEstimator(cutoff = 0.75)
+        mit_cut = mit_est.predict(match_array)
 
-        inp = np.array([[gRNA, hitA],
-                        [gRNA, hitB],
-                        [gRNA, hitC]])
+        np.testing.assert_equal(cor_prob, mit_cut)
+        cor_prob = [True, True, True, True, False]
 
-        match_encoder = preprocessing.MatchingTransformer()
-        matchTmp = match_encoder.transform(inp)
-        MITest = estimators.MITEstimator()
-        probMIT = MITest.predict(matchTmp)
+        mit_est = estimators.MITEstimator(cutoff = 0.2)
+        mit_cut = mit_est.predict(match_array)
 
-        cor_prob=[True,False,True]
-        
-        np.testing.assert_equal(cor_prob[-1], probMIT[-1])
+        np.testing.assert_equal(cor_prob, mit_cut)
+
+    def test_requires_pam(self):
+
+        grna = 'T' + 'A' * 19
+        hits = ['A' * 20 + 'AGG',
+                'A'*19 + 'T' + 'CGG',
+                'T' + 'A' * 19 + 'GGG',
+                'A' * 20 + 'ATG',]
+
+        match_array = make_match_array_from_seqs(grna, hits)
+
+        mit_est = estimators.MITEstimator(cutoff = 0.75)
+        mit_cut = mit_est.predict(match_array)
+
+        cor_prob = [True, False, True, False]
+
+        np.testing.assert_equal(cor_prob, mit_cut)
 
