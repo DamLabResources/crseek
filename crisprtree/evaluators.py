@@ -48,8 +48,17 @@ def check_grna_across_seqs(grna, seqs, estimator, aggfunc='max', index=None):
             checks.append((grna, rseq[n:n+23]))
             orig_place += [seq_key, seq_key]
 
-    res = estimator.predict(np.array(checks))
+    res = estimator.predict_proba(np.array(checks))
 
-    out = pd.DataFrame({'SeqNum': orig_place, 'Value': res}).groupby('SeqNum')['Value'].agg(aggfunc)
+    targets = [targ for grna, targ in checks]
+
+    df = pd.DataFrame({'SeqNum': orig_place, 'Value': res, 'Target': targets})
+
+    def fix_agg(rows):
+        idx = rows['Value'].idxmax()
+        return rows.ix[idx]
+
+
+    out = df.groupby('SeqNum')[['Value', 'Target']].agg(fix_agg)
     return out
 
