@@ -14,7 +14,7 @@ def check_grna_across_seqs(grna, seqs, estimator, aggfunc='max', index=None):
     seqs : list or pd.Series
         Iterable of sequences to check
     estimator : BaseEstimator
-        The estimator to use for evaluation. The estimator shuold already be *fit*
+        The estimator to use for evaluation. The estimator should already be *fit*
     aggfunc : str or func
         How to aggregate the results from the same sequence. Anything understood by pandas.agg
     index : pd.Index
