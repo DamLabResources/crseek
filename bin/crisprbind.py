@@ -1,8 +1,14 @@
+import sys
+import os
+pacPath = os.path.abspath(os.path.join(os.path.dirname(__file__), (os.pardir)))
+sys.path.append(pacPath)
+
 import argparse
 import pandas as pd
 from crisprtree.evaluators import check_grna_across_seqs
 from crisprtree import estimators
 from Bio import SeqIO
+
 
 if __name__ == '__main__':
 
