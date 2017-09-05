@@ -1,8 +1,12 @@
 from __future__ import division
 from sklearn.base import BaseEstimator
 from sklearn.pipeline import Pipeline
-from crisprtree.preprocessing import MatchingTransformer
+from crisprtree.preprocessing import MatchingTransformer, OneHotTransformer
 import numpy as np
+import os
+
+this_dir, this_filename = os.path.split(os.path.abspath(__file__))
+DATA_PATH = os.path.join(this_dir, '..',  "data")
 
 
 class MismatchEstimator(BaseEstimator):
@@ -159,5 +163,77 @@ class MITEstimator(BaseEstimator):
         S *= X[:,-1].astype(float)
 
         return np.array(S)
+
+
+class CFDEstimator(BaseEstimator):
+
+    def __init__(self, cutoff = 0.75):
+        """
+        Parameters
+        ----------
+        cutoff : float
+            Cutoff for calling binding
+
+        Returns
+        -------
+
+        CFDEstimator
+
+        """
+
+        self.cutoff = cutoff
+        self._read_scores()
+
+    def _read_scores(self):
+
+        with open(os.path.join(DATA_PATH, 'cfdMatrix.csv')) as handle:
+            vals = []
+            for line in handle:
+                line = line.replace(',', '').replace('[', '').replace(']', '').strip()
+                vals += [float(v) for v in line.split()]
+
+        self.score_vector = np.array(vals)
+
+
+    @staticmethod
+    def build_pipeline(**kwargs):
+        """ Utility function to build a pipeline.
+        Parameters
+        ----------
+        Keyword arguements are passed to the Estimator on __init__
+
+        Returns
+        -------
+
+        Pipeline
+
+        """
+
+        pipe = Pipeline(steps = [('transform', OneHotTransformer()),
+                                 ('predict', CFDEstimator(**kwargs))])
+        return pipe
+
+
+    def fit(self, X, y=None):
+        return self
+
+
+    def predict(self, X):
+
+        return self.predict_proba(X) >= self.cutoff
+
+
+    def predict_proba(self, X):
+
+        if X.shape[1] != 336:
+            raise ValueError('Input array shape must be Nx336')
+
+        items = X.shape[0]
+        scores = np.tile(self.score_vector, (items, 1))
+        hot_scores = scores[X].reshape(-1, 21)
+
+        probs = np.prod(hot_scores, axis=1)
+        return probs
+
 
 

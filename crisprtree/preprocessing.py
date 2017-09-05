@@ -169,4 +169,4 @@ def one_hot_encode_row(gRNA, target):
         for m23 in seq_order:
             features.append((target[21] == m22) and (target[22] == m23) )
 
-    return np.array(features)
+    return np.array(features)==1
