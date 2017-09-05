@@ -164,6 +164,9 @@ def one_hot_encode_row(gRNA, target):
         for g in seq_order:
             for t in seq_order:
                 features.append((gRNA[pos] == g) and (target[pos] == t))
-    features.append(target[-2:]=='GG')
+
+    for m22 in seq_order:
+        for m23 in seq_order:
+            features.append((target[21] == m22) and (target[22] == m23) )
 
     return np.array(features)
