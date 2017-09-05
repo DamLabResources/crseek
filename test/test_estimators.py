@@ -24,9 +24,29 @@ def make_match_array_from_seqs(grna, seqs):
 
     """
 
-
     seq_array = np.array(list(zip(cycle([grna]), seqs)))
     return preprocessing.MatchingTransformer().transform(seq_array)
+
+def make_onehot_array_from_seqs(grna, seqs):
+    """
+    Utility function for creating a OneHotArray (Nx336 boolean) from a list
+    of sequences.
+
+    Parameters
+    ----------
+    grna : str
+        A 20 bp gRNA
+    seqs : iter
+        An iterable of 23bp target sequences
+
+    Returns
+    -------
+    np.array
+
+    """
+
+    seq_array = np.array(list(zip(cycle([grna]), seqs)))
+    return preprocessing.OneHotTransformer().transform(seq_array)
 
 
 class TestMismatchEstimator(object):
@@ -263,4 +283,88 @@ class TestMITestimator(object):
         cor_prob = [True, False, True, False]
 
         np.testing.assert_equal(cor_prob, mit_cut)
+
+
+
+class TestCFDEstimator(object):
+
+    def test_raises_value_error_on_wrong_size(self):
+
+        mod = estimators.CFDEstimator()
+        check = np.ones((5, 20))
+
+        with pytest.raises(ValueError):
+            mod.predict(check)
+
+    def test_loading(self):
+
+        mod = estimators.CFDEstimator()
+        assert mod.score_vector.shape == (336, )
+        np.testing.assert_approx_equal(mod.score_vector.sum(), 217.9692)
+
+
+    def test_basic_score(self):
+        grna = 'A' * 20
+        hits = ['A' * 20 + 'AGG',
+                'A'*19 + 'T' + 'CGG',
+                'T' + 'A' * 19 + 'GGG',
+                'TT' + 'A'*18 + 'GGG',
+                'A'*5 + 'TT' + 'A'*13 + 'GGG',
+                'A' * 20 + 'GAG',
+                ]
+
+        hot_array = make_onehot_array_from_seqs(grna, hits)
+        cor_prob = [1.0, 0.6, 1.0, 0.727, 0.714*0.4375, 0.259]
+
+        mod = estimators.CFDEstimator()
+        cfd_score = mod.predict_proba(hot_array)
+
+        np.testing.assert_almost_equal(cor_prob, cfd_score, decimal=3)
+
+
+    def test_cutoff_score(self):
+
+        grna = 'A' * 20
+        hits = ['A' * 20 + 'AGG',
+                'A'*19 + 'T' + 'CGG',
+                'T' + 'A' * 19 + 'GGG',
+                'TT' + 'A'*18 + 'GGG',
+                'A'*5 + 'TT' + 'A'*13 + 'GGG',
+                'A' * 20 + 'GAG',
+                ]
+
+        hot_array = make_onehot_array_from_seqs(grna, hits)
+        cor_prob = np.array([1.0, 0.6, 1.0, 0.727, 0.714*0.4375, 0.259])
+
+        mod = estimators.CFDEstimator()
+        cfd_score = mod.predict(hot_array)
+
+        np.testing.assert_equal(cor_prob>0.75, cfd_score)
+
+        mod = estimators.CFDEstimator(cutoff = 0.5)
+        cfd_score = mod.predict(hot_array)
+        np.testing.assert_equal(cor_prob>0.5, cfd_score)
+
+
+    def test_build_pipeline(self):
+
+        grna = 'A' * 20
+        hits = ['A' * 20 + 'AGG',
+                'A'*19 + 'T' + 'CGG',
+                'T' + 'A' * 19 + 'GGG',
+                'TT' + 'A'*18 + 'GGG',
+                'A'*5 + 'TT' + 'A'*13 + 'GGG',
+                'A' * 20 + 'GAG',
+                ]
+
+        seq_array = np.array([(grna, hit) for hit in hits])
+        cor_prob = np.array([1.0, 0.6, 1.0, 0.727, 0.714*0.4375, 0.259])
+
+        mod = estimators.CFDEstimator.build_pipeline()
+        cfd_score = mod.predict_proba(seq_array)
+
+        np.testing.assert_almost_equal(cor_prob, cfd_score, decimal=3)
+
+
+
 
