@@ -31,8 +31,16 @@ class TestCheckgRNA(object):
         est = build_estimator()
 
         res = evaluators.check_grna_across_seqs(gRNA, seqs, est)
+        assert list(res.columns) == ['Value', 'Target', 'Position', 'Strand']
 
-        assert_series_equal(corr, res, check_names=False)
+        assert_series_equal(corr, res['Value'], check_names=False)
+
+        assert_series_equal(pd.Series([10, 15]), res['Position'].iloc[:2],
+                            check_names=False)
+
+        assert_series_equal(pd.Series(['+', '+']), res['Strand'].iloc[:2],
+                            check_names=False)
+
 
 
     def test_basic_RC(self):
@@ -51,7 +59,7 @@ class TestCheckgRNA(object):
 
         res = evaluators.check_grna_across_seqs(gRNA, seqs, est)
 
-        assert_series_equal(corr, res, check_names=False)
+        assert_series_equal(corr, res['Value'], check_names=False)
 
     def test_accepts_short_seqs(self):
 
@@ -70,7 +78,7 @@ class TestCheckgRNA(object):
 
         res = evaluators.check_grna_across_seqs(gRNA, seqs, est)
 
-        assert_series_equal(corr, res, check_names=False)
+        assert_series_equal(corr, res['Value'], check_names=False)
 
     def test_carries_series_index(self):
 
@@ -93,7 +101,7 @@ class TestCheckgRNA(object):
 
         res = evaluators.check_grna_across_seqs(gRNA, seqs, est)
 
-        assert_series_equal(corr, res, check_names=False)
+        assert_series_equal(corr, res['Value'], check_names=False)
 
 
 

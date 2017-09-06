@@ -42,6 +42,8 @@ def check_grna_across_seqs(grna, seqs, estimator, aggfunc='max', index=None):
             # deal with short sequences gracefully
             checks.append((grna, 'X'*23))
             orig_place.append(seq_key)
+            orig_position.append(-1)
+            orig_strand.append('')
             continue
 
         rseq = reverse_complement(seq)
