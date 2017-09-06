@@ -133,6 +133,15 @@ class TestOneHotEncoding(object):
         for row in range(3):
             np.testing.assert_array_equal(cor.astype(bool), res[row, :])
 
+    def test_bad_target(self):
+
+        gRNA = 'A'*20
+        hit = 'N' + 'A'*19 + 'AGG'
+
+        with pytest.raises(AssertionError):
+            preprocessing.one_hot_encode_row(gRNA, hit)
+
+
 
 class TestMatchingEncoding(object):
 

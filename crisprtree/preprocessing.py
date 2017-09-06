@@ -44,7 +44,7 @@ class MatchingTransformer(BaseEstimator):
 
         encoded = []
         for row in range(X.shape[0]):
-            encoded.append(match_encode_row(X[row, 0], X[row, 1]))
+            encoded.append(match_encode_row(X[row, 0].upper(), X[row, 1].upper()))
 
         return np.array(encoded)
 
@@ -91,7 +91,7 @@ class OneHotTransformer(BaseEstimator):
 
         encoded = []
         for row in range(X.shape[0]):
-            encoded.append(one_hot_encode_row(X[row, 0], X[row, 1]))
+            encoded.append(one_hot_encode_row(X[row, 0].upper(), X[row, 1].upper()))
 
         return np.array(encoded)
 
@@ -169,4 +169,7 @@ def one_hot_encode_row(gRNA, target):
         for m23 in seq_order:
             features.append((target[21] == m22) and (target[22] == m23) )
 
-    return np.array(features)==1
+    feats = np.array(features)==1
+    assert feats.sum() == 21, 'Nonstandard nucleotide detected.'
+
+    return feats
