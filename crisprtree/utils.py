@@ -180,8 +180,11 @@ def overlap_regions(hits, bed_path):
     if not os.path.exists(bed_path):
         raise IOError('%s does not exist.' % bed_path)
 
-    with NamedTemporaryFile(mode = 'w',buffering = 1) as handle:
-        writer = csv.writer(handle, delimiter = '\t')
+    with NamedTemporaryFile(mode = 'w',buffering = 1,
+                            newline = '') as handle:
+        writer = csv.writer(handle, delimiter = '\t',
+                            quoting=csv.QUOTE_NONE,
+                            dialect = csv.unix_dialect)
         for name, strand, left in hits.index:
             if strand not in {1, -1}:
                 raise TypeError('Strand must be {1, -1}, found %s' % strand)
@@ -194,7 +197,6 @@ def overlap_regions(hits, bed_path):
         tdict = {'genes': bed_path, 'hit': handle.name}
         cmd = 'bedtools intersect -a %(hit)s -b %(genes)s -loj -u'
         call_args = shlex.split(cmd % tdict)
-
         out = check_output(call_args)
         cols = ['Name', 'Left', 'Right', '_', '_', 'Strand']
         df = pd.read_csv(BytesIO(out), sep='\t',
