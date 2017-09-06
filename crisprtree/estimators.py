@@ -85,6 +85,9 @@ class MismatchEstimator(BaseEstimator):
 
         return binders
 
+    def predict_proba(self, X):
+        return self.predict(X)
+
 
 class MITEstimator(BaseEstimator):
 
