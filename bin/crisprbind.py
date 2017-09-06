@@ -19,6 +19,9 @@ if __name__ == '__main__':
     parser.add_argument('--out', dest='out')
     parser.add_argument('--topN', dest='topN', default=20,
                         help = 'How many gRNAs to return')
+    parser.add_argument('--method', dest='method',
+                        choices = ['MIT', 'CFD', 'missmatch'],
+                        default = 'MIT')
     args = parser.parse_args()
 
     seqs = []
@@ -29,7 +32,14 @@ if __name__ == '__main__':
                 seqs.append(str(seqR.seq.ungap('-')))
                 names.append(seqR.id)
 
-    est = estimators.MITEstimator.build_pipeline(cutoff=0.5)
+    if args.method == 'MIT':
+        est = estimators.MITEstimator.build_pipeline()
+    elif args.method == 'CFD':
+        est = estimators.CFDEstimator.build_pipeline()
+    elif args.method == 'missmatch':
+        est = estimators.MismatchEstimator.build_pipeline()
+    else:
+        raise ValueError('Unknown method provided.')
 
     res = check_grna_across_seqs(args.gRNA, seqs, est)
     res.index = pd.Index(names, name = 'Sequence')
