@@ -42,7 +42,6 @@ class TestCheckgRNA(object):
                             check_names=False)
 
 
-
     def test_basic_RC(self):
 
         gRNA = 'A'*20

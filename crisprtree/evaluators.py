@@ -48,11 +48,18 @@ def check_grna_across_seqs(grna, seqs, estimator, aggfunc='max', index=None):
 
         rseq = reverse_complement(seq)
         for n in range(len(seq)-23):
-            checks.append((grna, seq[n:n+23]))
-            checks.append((grna, rseq[n:n+23]))
-            orig_place += [seq_key, seq_key]
-            orig_position += [n, n]
-            orig_strand += ['+', '-']
+            if all(l.upper() in {'A', 'C', 'G', 'T'} for l in str(seq[n:n+23])):
+                checks.append((grna, seq[n:n+23]))
+                orig_place.append(seq_key)
+                orig_position.append(n)
+                orig_strand.append('+')
+
+            if all(l.upper() in {'A', 'C', 'G', 'T'} for l in str(rseq[n:n+23])):
+                checks.append((grna, rseq[n:n+23]))
+                orig_place.append(seq_key)
+                orig_position.append(n)
+                orig_strand.append('-')
+
 
     res = estimator.predict_proba(np.array(checks))
 
