@@ -135,7 +135,7 @@ class MITEstimator(BaseEstimator):
         S = self.predict_proba(X)
         return S >= self.cutoff
 
-    def predict_proba(self, X):
+    def predict_proba(self, X, dampen=False):
         """
         Parameters
         ----------
@@ -153,15 +153,29 @@ class MITEstimator(BaseEstimator):
 
         s1 = (1-(X[:,:-1] == np.array([False]))*self.penalties).prod(axis=1)
 
-        d = (X[:,:-1] == np.array([True])).sum(axis=1)
-        D = 1/(((19-d)/19)*4 +1)
-
-        mm = (X[:,:-1] == np.array([False])).sum(axis=1)
+        mm = (X[:, :-1] == np.array([False])).sum(axis=1)
         n = mm.copy()
-        # there's some hits with zero mismatch, assign to 1 for now
-        n[n==0] = 1
 
-        S = s1*D*(np.array([1])/n**2)
+        def distance(x):
+            idx = np.where(x==False)
+            if len(idx[0]) > 1:
+                return (idx[0][-1] - idx[0][0])
+            else:
+                return 0
+        d = np.apply_along_axis(distance, axis=1, arr=X[: , :-1])
+        with np.errstate(divide='ignore', invalid='ignore'):
+            d = np.true_divide(d,(n-1))
+            d[d == np.inf] = 0
+            d = np.nan_to_num(d)
+
+
+        D = 1 / ((19-d) / 19 * 4 + 1)
+        D[n<2] =1
+        S = s1
+        psudoN = n.copy()
+        psudoN[n <1] =1
+        if dampen:
+            S = s1*D*(np.array([1])/psudoN**2)
         S[mm==0] = 1
         S *= X[:,-1].astype(float)
 
