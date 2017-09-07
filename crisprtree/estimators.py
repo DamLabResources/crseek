@@ -162,6 +162,7 @@ class MITEstimator(BaseEstimator):
                 return (idx[0][-1] - idx[0][0])
             else:
                 return 0
+
         d = np.apply_along_axis(distance, axis=1, arr=X[: , :-1])
         with np.errstate(divide='ignore', invalid='ignore'):
             d = np.true_divide(d,(n-1))
@@ -176,8 +177,9 @@ class MITEstimator(BaseEstimator):
         psudoN[n <1] =1
         if dampen:
             S = s1*D*(np.array([1])/psudoN**2)
-        S[mm==0] = 1
-        S *= X[:,-1].astype(float)
+
+        S[mm==0]=1
+        S *= X[:, -1].astype(float)
 
         return np.array(S)
 
