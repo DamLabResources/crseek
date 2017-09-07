@@ -142,7 +142,9 @@ class TestOverlaps(object):
         gene_locs = [('chr1', 4000, 7000),
                          ('chr2', 400, 4000),
                          ('chr3', 1000, 2000)] + extra_items
-        writer = csv.writer(handle, delimiter = '\t')
+        writer = csv.writer(handle, delimiter = '\t',
+                            quoting=csv.QUOTE_NONE,
+                            dialect = csv.unix_dialect)
         writer.writerows(gene_locs)
 
 
@@ -150,7 +152,7 @@ class TestOverlaps(object):
 
         hits = self.make_basic()
 
-        with NamedTemporaryFile(mode='w', buffering = 1) as handle:
+        with NamedTemporaryFile(mode='w', newline = '', buffering = 1) as handle:
             self.write_basic(handle)
 
             res = utils.overlap_regions(hits, handle.name)
@@ -163,7 +165,7 @@ class TestOverlaps(object):
 
         hits = self.make_basic(extra_items = [('chr3', -1, 1400)])
 
-        with NamedTemporaryFile(mode='w', buffering = 1) as handle:
+        with NamedTemporaryFile(mode='w', buffering = 1, newline = '') as handle:
             self.write_basic(handle)
 
             res = utils.overlap_regions(hits, handle.name)
@@ -181,7 +183,7 @@ class TestOverlaps(object):
     def test_fail_gracefully_on_bad_strand(self):
 
         hits = self.make_basic(extra_items = [('chr1', '+', 45)])
-        with NamedTemporaryFile(mode='w', buffering = 1) as handle:
+        with NamedTemporaryFile(mode='w',newline = '', buffering = 1) as handle:
             self.write_basic(handle)
             with pytest.raises(TypeError):
                 utils.overlap_regions(hits, handle.name)
@@ -189,7 +191,7 @@ class TestOverlaps(object):
     def test_fail_gracefully_on_bad_left(self):
 
         hits = self.make_basic(extra_items = [('chr1', '+', '45')])
-        with NamedTemporaryFile(mode='w', buffering = 1) as handle:
+        with NamedTemporaryFile(mode='w', newline = '', buffering = 1) as handle:
             self.write_basic(handle)
             with pytest.raises(TypeError):
                 utils.overlap_regions(hits, handle.name)
