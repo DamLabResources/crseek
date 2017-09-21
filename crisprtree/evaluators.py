@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator
-from Bio.Seq import reverse_complement
+from Bio.Seq import Seq, reverse_complement
 
 
 def check_grna_across_seqs(grna, seqs, estimator, index=None):
@@ -9,13 +9,13 @@ def check_grna_across_seqs(grna, seqs, estimator, index=None):
 
     Parameters
     ----------
-    grna : str
+    grna : str or Seq
         The gRNA to scan across all sequences.
     seqs : list or pd.Series
         Iterable of sequences to check
     estimator : BaseEstimator
         The estimator to use for evaluation. The estimator should already be *fit*
-    index : pd.Index
+    index : pd.Index or list
         An index to attach to the result
 
     Returns
@@ -27,9 +27,6 @@ def check_grna_across_seqs(grna, seqs, estimator, index=None):
 
     checks = []
     seq_info = []
-    orig_place = []
-    orig_position = []
-    orig_strand = []
 
     if type(seqs) == type(pd.Series()):
         it = zip(seqs.index, seqs.values)
@@ -37,6 +34,9 @@ def check_grna_across_seqs(grna, seqs, estimator, index=None):
     else:
         it = enumerate(seqs)
         index_name = 'SeqNum'
+
+    if type(grna) is Seq:
+        grna = str(grna)
 
     for seq_key, seq in it:
         if len(seq) < 23:
@@ -83,5 +83,53 @@ def check_grna_across_seqs(grna, seqs, estimator, index=None):
     return out
 
 
-def positional_aggregation():
-    pass
+def _check_columns(df, columns):
+    """ Utility function to test for columns in dataframe
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+    columns : list
+
+    Returns
+    -------
+    bool
+    """
+
+    for col in columns:
+        if col not in df.columns:
+            return False
+    return True
+
+
+def positional_aggregation(seq_df, grna_df, overlap = 20):
+    """ Utility function to aggregate matching results in a position-specific manner.
+
+    Parameters
+    ----------
+    seq_df : pd.DataFrame
+        Must contain 3 columns: Seq, Start, Stop. These must contain a Bio.Seq object, and two integers indicating
+        the start and stop posisitons of the sequence on the reference chromosome
+
+    grna_df : pd.DataFrame
+        Must contain 2 columns: gRNA, Start, Stop. These must contain a Bio.Seq object, and two integers indicating
+        the start and stop posisitons of the gRNA on the reference chromosome
+
+    overlap: int
+        How much overlap to require when comparing intervals.
+
+    Returns
+    -------
+
+    """
+
+    # Simple type checking
+
+    assert _check_columns(seq_df, ['Seq', 'Start', 'Stop']), 'seq_df must contain [Seq, Start, Stop] columns'
+    assert _check_columns(grna_df, ['gRNA', 'Start', 'Stop']), 'seq_df must contain [gRNA, Start, Stop] columns'
+
+    is_seq = seq_df['Seq'].map(lambda x: type(x) is Seq)
+    assert is_seq.all(), 'All items in the Seq column must be Bio.Seq objects'
+
+    is_seq = grna_df['gRNA'].map(lambda x: type(x) is Seq)
+    assert is_seq.all(), 'All items in the gRNA column must be Bio.Seq objects'
