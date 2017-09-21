@@ -5,7 +5,7 @@ from sklearn.pipeline import Pipeline
 from Bio.Seq import reverse_complement
 import numpy as np
 import pandas as pd
-from pandas.util.testing import assert_series_equal
+from pandas.util.testing import assert_series_equal, assert_index_equal
 
 
 def build_estimator():
@@ -90,7 +90,7 @@ class TestCheckgRNA(object):
                 ]
         seqs += [reverse_complement(seq) for seq in seqs]
 
-        index = ['Seq%i' % i for i in range(len(seqs))]
+        index = pd.Index(['Seq%i' % i for i in range(len(seqs))], name='SeqIndex')
         seqs = pd.Series(seqs, index=index)
 
         corr = pd.Series([True, True, False, False]*2,
@@ -101,8 +101,53 @@ class TestCheckgRNA(object):
         res = evaluators.check_grna_across_seqs(gRNA, seqs, est)
 
         assert_series_equal(corr, res['Value'], check_names=False)
+        assert_index_equal(corr.index, res.index)
 
+    def test_accepts_index(self):
 
+        gRNA = 'A'*20
+
+        seqs = ['T'*10 + gRNA + 'TGG' + 'T'*5,
+                'T'*15 + gRNA + 'TGG' + 'T'*5,
+                'C'*30,
+                'G'*12
+                ]
+        seqs += [reverse_complement(seq) for seq in seqs]
+
+        index = pd.Index(['Seq%i' % i for i in range(len(seqs))], name='SeqIndex')
+
+        corr = pd.Series([True, True, False, False]*2,
+                         index=index)
+
+        est = build_estimator()
+
+        res = evaluators.check_grna_across_seqs(gRNA, seqs, est, index=index)
+
+        assert_series_equal(corr, res['Value'], check_names=False)
+        assert_index_equal(corr.index, res.index)
+
+    def test_accepts_list_index(self):
+
+        gRNA = 'A'*20
+
+        seqs = ['T'*10 + gRNA + 'TGG' + 'T'*5,
+                'T'*15 + gRNA + 'TGG' + 'T'*5,
+                'C'*30,
+                'G'*12
+                ]
+        seqs += [reverse_complement(seq) for seq in seqs]
+
+        index = ['Seq%i' % i for i in range(len(seqs))]
+
+        corr = pd.Series([True, True, False, False]*2,
+                         index=index)
+
+        est = build_estimator()
+
+        res = evaluators.check_grna_across_seqs(gRNA, seqs, est, index=index)
+
+        assert_series_equal(corr, res['Value'], check_names=False)
+        assert_index_equal(corr.index, res.index)
 
 
 
