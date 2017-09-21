@@ -184,45 +184,72 @@ class TestPositionalAgg(object):
         grnadf = pd.DataFrame([(Seq('A'*20), 10, 15),
                               (Seq('T'*20), 11, 17)],
                               columns = ['gRNA', 'Start', 'Stop'])
-        return seqdf, grnadf
+        est = estimators.CFDEstimator.build_pipeline()
+
+        return seqdf, grnadf, est
 
 
     def test_column_names(self):
 
-        seqdf, grnadf = self.make_basic_dfs()
+        seqdf, grnadf, est = self.make_basic_dfs()
 
-        evaluators.positional_aggregation(seqdf, grnadf)
+        evaluators.positional_aggregation(seqdf, grnadf, est)
 
         with pytest.raises(AssertionError):
             bseqdf = pd.DataFrame([(Seq('A'*30), 10, 40),
                               (Seq('T'*30), 11, 41)],
                               columns = ['Sequence', 'Start', 'Stop'])
-            evaluators.positional_aggregation(bseqdf, grnadf)
+            evaluators.positional_aggregation(bseqdf, grnadf, est)
 
         with pytest.raises(AssertionError):
             bgrnadf = pd.DataFrame([(Seq('A'*20), 10, 15),
                                    (Seq('T'*20), 11, 17)],
                                   columns = ['gRNAs', 'Start', 'Stop'])
-            evaluators.positional_aggregation(seqdf, bgrnadf)
+            evaluators.positional_aggregation(seqdf, bgrnadf, est)
 
 
     def test_seq_column_type(self):
 
-        seqdf, grnadf = self.make_basic_dfs()
+        seqdf, grnadf, est = self.make_basic_dfs()
 
         with pytest.raises(AssertionError):
             bseqdf = pd.DataFrame([('A'*30, 10, 40),
                               ('T'*30, 11, 41)],
                               columns = ['Seq', 'Start', 'Stop'])
-            evaluators.positional_aggregation(bseqdf, grnadf)
+            evaluators.positional_aggregation(bseqdf, grnadf, est)
 
         with pytest.raises(AssertionError):
             bgrnadf = pd.DataFrame([('A'*20, 10, 15),
                                     ('T'*20, 11, 17)],
                                    columns = ['gRNA', 'Start', 'Stop'])
-            evaluators.positional_aggregation(seqdf, bgrnadf)
+            evaluators.positional_aggregation(seqdf, bgrnadf, est)
 
 
+    def make_complicated_dfs(self):
+        pass
+
+    def test_iterate_overlaps(self):
+
+        seqdf = pd.DataFrame([('S1', 50, 200),
+                              ('S2', 150, 250),
+                              ('S3', 350, 1100),
+                              ('S4', 500, 700),
+                              ('S5', 400, 900)],
+                             columns = ['Seq', 'Start', 'Stop'])
+
+        grnadf = pd.DataFrame([('g1', 175, 195),
+                               ('g2', 600, 620)],
+                              columns = ['gRNA', 'Start', 'Stop'])
+
+        cors = [('g1',  {'S1', 'S2'}),
+                ('g2',  {'S3', 'S4', 'S5'})]
+
+        found = list(evaluators._iterate_grna_seq_overlaps(seqdf, grnadf, 20))
+        assert len(found) == 2
+
+        for (grow, sdf), (gkey, cor_seqs) in zip(found, cors):
+            assert grow['gRNA'] == gkey
+            assert set(sdf['Seq']) == cor_seqs
 
 
 

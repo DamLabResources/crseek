@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator
 from Bio.Seq import Seq, reverse_complement
+import interlap
 
 
 def check_grna_across_seqs(grna, seqs, estimator, index=None):
@@ -102,19 +103,36 @@ def _check_columns(df, columns):
     return True
 
 
-def positional_aggregation(seq_df, grna_df, overlap = 20):
+def _iterate_grna_seq_overlaps(seq_df, grna_df, overlap):
+
+    inter_tree = interlap.InterLap()
+
+    for ind, row in seq_df.iterrows():
+        inter_tree.add((row['Start']+overlap, row['Stop']-overlap, ind))
+
+    for gind, row in grna_df.iterrows():
+        res = inter_tree.find((row['Start'], row['Stop']))
+        index = pd.Index([ind for _, _, ind in res])
+
+        yield row, seq_df.loc[index, :]
+
+
+
+def positional_aggregation(seq_df, grna_df, estimator, overlap = 20):
     """ Utility function to aggregate matching results in a position-specific manner.
 
     Parameters
     ----------
     seq_df : pd.DataFrame
         Must contain 3 columns: Seq, Start, Stop. These must contain a Bio.Seq object, and two integers indicating
-        the start and stop posisitons of the sequence on the reference chromosome
+        the start and stop positions of the sequence on the reference chromosome
 
     grna_df : pd.DataFrame
         Must contain 2 columns: gRNA, Start, Stop. These must contain a Bio.Seq object, and two integers indicating
-        the start and stop posisitons of the gRNA on the reference chromosome
+        the start and stop positions of the gRNA on the reference chromosome
 
+    estimator : BaseEstimator
+        The estimator to use for evaluation. The estimator should already be *fit*
     overlap: int
         How much overlap to require when comparing intervals.
 
@@ -133,3 +151,6 @@ def positional_aggregation(seq_df, grna_df, overlap = 20):
 
     is_seq = grna_df['gRNA'].map(lambda x: type(x) is Seq)
     assert is_seq.all(), 'All items in the gRNA column must be Bio.Seq objects'
+
+    for grna_row, seq_hits in _iterate_grna_seq_overlaps(seq_df, grna_df, overlap):
+        pass
