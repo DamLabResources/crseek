@@ -224,10 +224,6 @@ class TestPositionalAgg(object):
                                    columns = ['gRNA', 'Start', 'Stop'])
             evaluators.positional_aggregation(seqdf, bgrnadf, est)
 
-
-    def make_complicated_dfs(self):
-        pass
-
     def test_iterate_overlaps(self):
 
         seqdf = pd.DataFrame([('S1', 50, 200),
@@ -251,5 +247,53 @@ class TestPositionalAgg(object):
             assert grow['gRNA'] == gkey
             assert set(sdf['Seq']) == cor_seqs
 
+    def make_complicated_dfs(self):
 
+        grnaA = 'A'*10 + 'C'*10
+        grnaB = 'T'*10 + 'A'*10
 
+        big_seq = 'G'*100 + grnaA + 'G'*320 + grnaB + 'G'*100
+
+        regions = [(50, 250),
+                   (110, 300),
+                   (200, 350),
+                   (300, 500)]
+        seqs = []
+        correct_calls = []
+        for num, (start, stop) in enumerate(regions):
+            seqs.append({'Start': start, 'Stop': stop, 'Seq': Seq(big_seq[start:stop]),
+                         'Num': num})
+            for grna in [grnaA, grnaB]:
+                correct_calls.append({'Num': num, 'gRNA': grna,
+                                      'CorPosition': seqs[-1]['Seq'].find(grna)})
+
+        wrong_seq = 'G'*len(big_seq)
+        for num, (start, stop) in enumerate(regions):
+            seqs.append({'Start': start, 'Stop': stop, 'Seq': Seq(wrong_seq[start:stop]),
+                         'Num': num})
+            for grna in [grnaA, grnaB]:
+                correct_calls.append({'Num': num, 'gRNA': grna,
+                                      'CorPosition': seqs[-1]['Seq'].find(grna)})
+
+        seqdf = pd.DataFrame(seqs)
+        grnadf = pd.DataFrame([{'gRNA': Seq(grnaA), 'Start': 100, 'Stop': 120},
+                               {'gRNA': Seq(grnaB), 'Start': 450, 'Stop': 470}])
+        cordf = pd.DataFrame(correct_calls)
+
+        return seqdf, grnadf, cordf
+
+    def test_positional_aggregation(self):
+
+        seqdf, grnadf, cordf = self.make_complicated_dfs()
+        est = estimators.MismatchEstimator.build_pipeline()
+
+        results = evaluators.positional_aggregation(seqdf, grnadf, est)
+
+        merged = pd.merge(results, cordf, on = ['Num', 'gRNA'], how = 'outer')
+
+        print(merged)
+
+        assert_series_equal(merged['Position'].isnull(), merged['CorPosition'] == -1)
+        assert_series_equal(merged.dropna()['Position']+1, merged.dropna()['CorPosition'])
+
+        assert False
