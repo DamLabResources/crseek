@@ -51,13 +51,13 @@ def check_grna_across_seqs(grna, seqs, estimator, index=None):
         rseq = reverse_complement(seq)
         for n in range(len(seq)-23):
             if all(l.upper() in {'A', 'C', 'G', 'T'} for l in str(seq[n:n+23])):
-                checks.append((grna, seq[n:n+23]))
+                checks.append((grna, str(seq[n:n+23])))
                 seq_info.append({'Index': seq_key,
                                  'Position': n,
                                  'Strand': '+'})
 
             if all(l.upper() in {'A', 'C', 'G', 'T'} for l in str(rseq[n:n+23])):
-                checks.append((grna, rseq[n:n+23]))
+                checks.append((grna, str(rseq[n:n+23])))
                 seq_info.append({'Index': seq_key,
                                  'Position': n,
                                  'Strand': '-'})
@@ -117,7 +117,6 @@ def _iterate_grna_seq_overlaps(seq_df, grna_df, overlap):
         yield row, seq_df.loc[index, :]
 
 
-
 def positional_aggregation(seq_df, grna_df, estimator, overlap = 20):
     """ Utility function to aggregate matching results in a position-specific manner.
 
@@ -152,5 +151,17 @@ def positional_aggregation(seq_df, grna_df, estimator, overlap = 20):
     is_seq = grna_df['gRNA'].map(lambda x: type(x) is Seq)
     assert is_seq.all(), 'All items in the gRNA column must be Bio.Seq objects'
 
+    all_hits = []
     for grna_row, seq_hits in _iterate_grna_seq_overlaps(seq_df, grna_df, overlap):
-        pass
+
+        all_hits.append(check_grna_across_seqs(grna_row['gRNA'], seq_hits['Seq'], estimator))
+        for col in grna_row.index:
+            if col not in {'Start', 'Stop', 'gRNA'}:
+                all_hits[-1][col] = grna_row[col]
+        all_hits[-1]['gRNA'] = str(grna_row['gRNA'])
+
+        for col in seq_hits.columns:
+            if col not in {'Start', 'Stop', 'Seq'}:
+                all_hits[-1].loc[seq_hits.index, col] = seq_hits.loc[seq_hits.index, col]
+
+    return pd.concat(all_hits, axis=0, ignore_index=True)
