@@ -115,6 +115,8 @@ def _iterate_grna_seq_overlaps(seq_df, grna_df, overlap):
     for gind, row in grna_df.iterrows():
         res = inter_tree.find((row['Start'], row['Stop']))
         index = pd.Index([ind for _, _, ind in res])
+        if len(index) == 0:
+            continue
 
         yield row, seq_df.loc[index, :]
 
@@ -166,4 +168,7 @@ def positional_aggregation(seq_df, grna_df, estimator, overlap = 20):
             if col not in {'Start', 'Stop', 'Seq'}:
                 all_hits[-1].loc[seq_hits.index, col] = seq_hits.loc[seq_hits.index, col]
 
-    return pd.concat(all_hits, axis=0, ignore_index=True)
+    try:
+        return pd.concat(all_hits, axis=0, ignore_index=True)
+    except ValueError:
+        return None
