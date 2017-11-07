@@ -177,12 +177,12 @@ class TestPositionalAgg(object):
 
     def make_basic_dfs(self):
 
-        seqdf = pd.DataFrame([(Seq('A'*30), 10, 40),
-                              (Seq('T'*30), 11, 41)],
+        seqdf = pd.DataFrame([(Seq('A'*100), 10, 110),
+                              (Seq('T'*100), 11, 111)],
                               columns = ['Seq', 'Start', 'Stop'])
 
-        grnadf = pd.DataFrame([(Seq('A'*20), 10, 15),
-                              (Seq('T'*20), 11, 17)],
+        grnadf = pd.DataFrame([(Seq('A'*20), 30, 52),
+                              (Seq('T'*20), 30, 52)],
                               columns = ['gRNA', 'Start', 'Stop'])
         est = estimators.CFDEstimator.build_pipeline()
 
@@ -264,16 +264,19 @@ class TestPositionalAgg(object):
             seqs.append({'Start': start, 'Stop': stop, 'Seq': Seq(big_seq[start:stop]),
                          'Num': num})
             for grna in [grnaA, grnaB]:
+                pos = seqs[-1]['Seq'].find(grna)
                 correct_calls.append({'Num': num, 'gRNA': grna,
-                                      'CorPosition': seqs[-1]['Seq'].find(grna)})
+                                      'CorPosition': pos if pos >=0 else np.nan,
+                                      'IsPresent': pos != -1})
 
         wrong_seq = 'G'*len(big_seq)
-        for num, (start, stop) in enumerate(regions):
+        for num, (start, stop) in enumerate(regions, num):
             seqs.append({'Start': start, 'Stop': stop, 'Seq': Seq(wrong_seq[start:stop]),
                          'Num': num})
             for grna in [grnaA, grnaB]:
                 correct_calls.append({'Num': num, 'gRNA': grna,
-                                      'CorPosition': seqs[-1]['Seq'].find(grna)})
+                                      'CorPosition': np.nan,
+                                      'IsPresent': False})
 
         seqdf = pd.DataFrame(seqs)
         grnadf = pd.DataFrame([{'gRNA': Seq(grnaA), 'Start': 100, 'Stop': 120},
@@ -285,15 +288,9 @@ class TestPositionalAgg(object):
     def test_positional_aggregation(self):
 
         seqdf, grnadf, cordf = self.make_complicated_dfs()
-        est = estimators.MismatchEstimator.build_pipeline()
+        est = estimators.MismatchEstimator.build_pipeline(miss_non_seed=0)
 
-        results = evaluators.positional_aggregation(seqdf, grnadf, est)
-
+        results = evaluators.positional_aggregation(seqdf, grnadf, est, overlap=-1)
         merged = pd.merge(results, cordf, on = ['Num', 'gRNA'], how = 'outer')
 
-        print(merged)
-
-        assert_series_equal(merged['Position'].isnull(), merged['CorPosition'] == -1)
-        assert_series_equal(merged.dropna()['Position']+1, merged.dropna()['CorPosition'])
-
-        assert False
+        assert merged.loc[merged['IsPresent'], 'Value'].all()

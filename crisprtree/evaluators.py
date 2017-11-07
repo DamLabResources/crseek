@@ -29,6 +29,8 @@ def check_grna_across_seqs(grna, seqs, estimator, index=None):
     checks = []
     seq_info = []
 
+    assert len(seqs) > 0, 'No sequences passed!'
+
     if type(seqs) == type(pd.Series()):
         it = zip(seqs.index, seqs.values)
         index_name = seqs.index.name
