@@ -1,4 +1,4 @@
-from bin import crisprbam
+from scripts import crisprbam
 from pysam import AlignedSegment
 from unittest.mock import patch
 from pandas.util.testing import assert_series_equal
