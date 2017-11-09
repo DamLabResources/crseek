@@ -91,7 +91,7 @@ class MismatchEstimator(BaseEstimator):
 
 class MITEstimator(BaseEstimator):
 
-    def __init__(self, dampen = True, cutoff = 0.75):
+    def __init__(self, dampen = False, cutoff = 0.75):
         """
         Parameters
         ----------
