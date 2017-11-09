@@ -4,7 +4,7 @@ from sklearn.base import BaseEstimator
 from Bio.Seq import reverse_complement
 
 
-def check_grna_across_seqs(grna, seqs, estimator, aggfunc='max', index=None):
+def check_grna_across_seqs(grna, seqs, estimator, aggfunc='fix_agg', index=None):
     """ Simple utility function to check all sequences against a single gRNA
 
     Parameters
@@ -68,11 +68,17 @@ def check_grna_across_seqs(grna, seqs, estimator, aggfunc='max', index=None):
     df = pd.DataFrame({'SeqNum': orig_place, 'Value': res, 'Target': targets,
                     'Position': orig_position, 'Strand': orig_strand})
 
+
     def fix_agg(rows):
         idx = rows['Value'].idxmax()
         return rows.ix[idx]
 
 
-    out = df.groupby('SeqNum')[['Value', 'Target', 'Position', 'Strand']].agg(fix_agg)
+    if not aggfunc == 'fix_agg':
+        out = df.copy()
+
+    else:
+        out = df.groupby('SeqNum')[['Value', 'Target', 'Position', 'Strand']].agg(fix_agg)
+
     return out
 
