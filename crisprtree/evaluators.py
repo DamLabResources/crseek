@@ -5,9 +5,9 @@ from Bio.Seq import Seq, reverse_complement
 import interlap
 
 
-<<<<<<< HEAD
-def check_grna_across_seqs(grna, seqs, estimator, aggfunc='fix_agg', index=None):
-=======
+
+
+
 def check_grna_across_seqs(grna, seqs, estimator, index=None):
 
     """ Simple utility function to check all sequences against a single gRNA
