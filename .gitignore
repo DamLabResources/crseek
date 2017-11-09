@@ -1,6 +1,7 @@
 # pycharm .idea files
 .idea/
-.chach/
+.cache
+
 
 *.py[cod]
 
