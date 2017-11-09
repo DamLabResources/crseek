@@ -5,9 +5,11 @@ import pandas as pd
 from pandas.util.testing import assert_series_equal, assert_frame_equal
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from Bio import SeqIO
+from subprocess import CalledProcessError
 import os
 import pytest
 import csv
+from unittest.mock import patch
 
 
 class TestExtract(object):
@@ -89,6 +91,15 @@ class TestCasOff(object):
         gRNA, seq_recs, cor = self.make_basic()
         res = utils.cas_offinder([gRNA], 5, seqs=seq_recs)
         assert_frame_equal(res, cor)
+
+    @patch('subprocess.check_call')
+    def test_fails_gracefully(self, mock):
+        mock.side_effect = FileNotFoundError
+
+        with pytest.raises(AssertionError):
+            gRNA, seq_recs, cor = self.make_basic()
+            res = utils.cas_offinder([gRNA], 5, seqs=seq_recs)
+
 
     def test_basic_path(self):
 

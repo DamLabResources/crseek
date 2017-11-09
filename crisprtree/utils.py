@@ -5,10 +5,11 @@ import pandas as pd
 import numpy as np
 import shlex
 from io import StringIO, BytesIO
-from subprocess import check_call, STDOUT, check_output
+from subprocess import check_call, STDOUT, check_output,CalledProcessError
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from Bio.SeqUtils import nt_search
 from Bio.Seq import reverse_complement
+
 import csv
 
 import os
@@ -144,7 +145,10 @@ def cas_offinder(gRNAs, mismatches, seqs = None, direc = None,
 
         FNULL = open(os.devnull, 'w')
         call_args = shlex.split(cmd % tdict)
-        check_call(call_args, stdout=FNULL, stderr=STDOUT)
+        try:
+            check_call(call_args, stdout=FNULL, stderr=STDOUT)
+        except FileNotFoundError:
+            raise AssertionError('cas-offinder not installed on the path')
 
         out_res = []
         with open(out_path) as handle:
