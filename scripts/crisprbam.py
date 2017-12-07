@@ -169,7 +169,7 @@ def main(bam_path, chrom, grnas, est, batchsize=5000):
 
     """
 
-    read_batches = batch_iterate_reads(args.file, chrom, args.batch)
+    read_batches = batch_iterate_reads(bam_path, chrom, batchsize)
 
     aggregated_results = []
     for num, batch in enumerate(read_batches):
