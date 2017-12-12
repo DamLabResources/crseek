@@ -92,15 +92,6 @@ class TestCasOff(object):
         res = utils.cas_offinder([gRNA], 5, seqs=seq_recs)
         assert_frame_equal(res, cor)
 
-    @patch('subprocess.check_call')
-    def test_fails_gracefully(self, mock):
-        mock.side_effect = FileNotFoundError
-
-        with pytest.raises(AssertionError):
-            gRNA, seq_recs, cor = self.make_basic()
-            res = utils.cas_offinder([gRNA], 5, seqs=seq_recs)
-
-
     def test_basic_path(self):
 
         gRNA, seq_recs, cor = self.make_basic()

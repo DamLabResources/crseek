@@ -15,17 +15,19 @@ class MismatchEstimator(BaseEstimator):
     binding.
     """
 
-    def __init__(self, seed_len = 4, miss_seed = 0, miss_non_seed = 3, require_pam = True):
+    def __init__(self, seed_len = 4, tail_len = 16, miss_seed = 0, miss_tail = 3, require_pam = True):
         """
 
         Parameters
         ----------
         seed_len : int
             The length of the seed region.
+        tail_len : int
+            The length of the tail region.
         miss_seed : int
             The number of mismatches allowed in the seed region.
-        miss_non_seed : int
-            The number of mismatches allowed in the non-seed region.
+        miss_tail : int
+            The number of mismatches allowed in the tail region.
         require_pam : bool
             Must the PAM be present
 
@@ -34,11 +36,15 @@ class MismatchEstimator(BaseEstimator):
         MismatchEstimator
         """
 
-        assert seed_len <= 20, 'seed_len cannot be longer then 20'
         self.seed_len = seed_len
+        self.tail_len = tail_len
         self.miss_seed = miss_seed
-        self.miss_non_seed = miss_non_seed
+        self.miss_tail = miss_tail
         self.require_pam = require_pam
+
+    #@staticmethod
+    #def load_yaml():
+
 
     @staticmethod
     def build_pipeline(**kwargs):
@@ -79,7 +85,7 @@ class MismatchEstimator(BaseEstimator):
         seed_miss = (X[:, -(self.seed_len+1):-1] == False).sum(axis=1)
         non_seed_miss = (X[:, :-(self.seed_len)] == False).sum(axis=1)
 
-        binders = (seed_miss <= self.miss_seed) & (non_seed_miss <= self.miss_non_seed)
+        binders = (seed_miss <= self.miss_seed) & (non_seed_miss <= self.miss_tail)
         if self.require_pam:
             binders &= X[:, -1]
 

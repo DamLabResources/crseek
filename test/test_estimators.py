@@ -63,12 +63,6 @@ class TestMismatchEstimator(object):
         with pytest.raises(ValueError):
             mod.predict(check)
 
-    def test_raises_assert_error_on_too_long_seed(self):
-
-        # Be defensive so we don't have an IndexError on the .predict
-        with pytest.raises(AssertionError):
-            mod = estimators.MismatchEstimator(seed_len = 21)
-
 
     def test_basic_predict(self):
 
@@ -85,7 +79,7 @@ class TestMismatchEstimator(object):
 
         mod = estimators.MismatchEstimator(seed_len = 4,
                                            miss_seed = 0,
-                                           miss_non_seed = 2,
+                                           miss_tail = 2,
                                            require_pam = True)
         res = mod.predict(match_array)
 
@@ -106,7 +100,7 @@ class TestMismatchEstimator(object):
 
         pipe = estimators.MismatchEstimator.build_pipeline(seed_len = 4,
                                                            miss_seed = 0,
-                                                           miss_non_seed = 2,
+                                                           miss_tail = 2,
                                                            require_pam = True)
 
         res = pipe.predict(seq_array)
@@ -125,7 +119,7 @@ class TestMismatchEstimator(object):
 
         mod = estimators.MismatchEstimator(seed_len = 2,
                                            miss_seed = 0,
-                                           miss_non_seed = 2,
+                                           miss_tail = 2,
                                            require_pam = True)
         res = mod.predict(match_array)
         expected = [True, False, False, True, True]
@@ -133,7 +127,7 @@ class TestMismatchEstimator(object):
 
         mod = estimators.MismatchEstimator(seed_len = 3,
                                            miss_seed = 0,
-                                           miss_non_seed = 2,
+                                           miss_tail = 2,
                                            require_pam = True)
         res = mod.predict(match_array)
         expected = [True, False, False, False, True]
@@ -151,7 +145,7 @@ class TestMismatchEstimator(object):
 
         mod = estimators.MismatchEstimator(seed_len = 4,
                                            miss_seed = 1,
-                                           miss_non_seed = 2,
+                                           miss_tail = 2,
                                            require_pam = True)
         res = mod.predict(match_array)
         expected = [True, True, False, False]
@@ -159,7 +153,7 @@ class TestMismatchEstimator(object):
 
         mod = estimators.MismatchEstimator(seed_len = 4,
                                            miss_seed = 2,
-                                           miss_non_seed = 2,
+                                           miss_tail = 2,
                                            require_pam = True)
         res = mod.predict(match_array)
         expected = [True, True, True, False]
@@ -177,7 +171,7 @@ class TestMismatchEstimator(object):
 
         mod = estimators.MismatchEstimator(seed_len = 4,
                                            miss_seed = 0,
-                                           miss_non_seed = 2,
+                                           miss_tail = 2,
                                            require_pam = True)
         res = mod.predict(match_array)
         expected = [True, True, True, False]
@@ -185,7 +179,7 @@ class TestMismatchEstimator(object):
 
         mod = estimators.MismatchEstimator(seed_len = 4,
                                            miss_seed = 0,
-                                           miss_non_seed = 1,
+                                           miss_tail = 1,
                                            require_pam = True)
         res = mod.predict(match_array)
         expected = [True, True, False, False]
