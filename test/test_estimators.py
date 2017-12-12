@@ -3,6 +3,10 @@ from crisprtree import preprocessing, estimators
 import pytest
 import numpy as np
 from itertools import cycle
+from tempfile import NamedTemporaryFile
+import os
+import yaml
+from sklearn.pipeline import Pipeline
 
 
 
@@ -80,7 +84,7 @@ class TestMismatchEstimator(object):
         mod = estimators.MismatchEstimator(seed_len = 4,
                                            miss_seed = 0,
                                            miss_tail = 2,
-                                           require_pam = True)
+                                           pam = True)
         res = mod.predict(match_array)
 
         np.testing.assert_array_equal(res, expected)
@@ -101,10 +105,34 @@ class TestMismatchEstimator(object):
         pipe = estimators.MismatchEstimator.build_pipeline(seed_len = 4,
                                                            miss_seed = 0,
                                                            miss_tail = 2,
-                                                           require_pam = True)
+                                                           pam = True)
 
         res = pipe.predict(seq_array)
         np.testing.assert_array_equal(res, expected)
+
+    def test_load_yaml(self):
+
+        d = {'Seed Length': 5,
+             'Tail Length': 15,
+             'Seed Misses': 1,
+             'Tail Misses': 3,
+             'PAM': 'NRG'}
+
+        with NamedTemporaryFile(suffix='.yaml', mode='w') as handle:
+            yaml.dump(d, handle)
+            handle.flush()
+            os.fsync(handle)
+
+            est = estimators.MismatchEstimator.load_yaml(handle.name)
+
+        assert type(est) is Pipeline
+        mm_est = est.steps[1][1]
+
+        assert mm_est.seed_len == 5
+        assert mm_est.tail_len == 15
+        assert mm_est.miss_seed == 1
+        assert mm_est.miss_tail == 3
+        assert mm_est.pam == 'NRG'
 
     def test_set_seed_length(self):
 
@@ -120,7 +148,7 @@ class TestMismatchEstimator(object):
         mod = estimators.MismatchEstimator(seed_len = 2,
                                            miss_seed = 0,
                                            miss_tail = 2,
-                                           require_pam = True)
+                                           pam = True)
         res = mod.predict(match_array)
         expected = [True, False, False, True, True]
         np.testing.assert_array_equal(res, expected)
@@ -128,7 +156,7 @@ class TestMismatchEstimator(object):
         mod = estimators.MismatchEstimator(seed_len = 3,
                                            miss_seed = 0,
                                            miss_tail = 2,
-                                           require_pam = True)
+                                           pam = True)
         res = mod.predict(match_array)
         expected = [True, False, False, False, True]
         np.testing.assert_array_equal(res, expected)
@@ -146,7 +174,7 @@ class TestMismatchEstimator(object):
         mod = estimators.MismatchEstimator(seed_len = 4,
                                            miss_seed = 1,
                                            miss_tail = 2,
-                                           require_pam = True)
+                                           pam = True)
         res = mod.predict(match_array)
         expected = [True, True, False, False]
         np.testing.assert_array_equal(res, expected)
@@ -154,7 +182,7 @@ class TestMismatchEstimator(object):
         mod = estimators.MismatchEstimator(seed_len = 4,
                                            miss_seed = 2,
                                            miss_tail = 2,
-                                           require_pam = True)
+                                           pam = True)
         res = mod.predict(match_array)
         expected = [True, True, True, False]
         np.testing.assert_array_equal(res, expected)
@@ -172,7 +200,7 @@ class TestMismatchEstimator(object):
         mod = estimators.MismatchEstimator(seed_len = 4,
                                            miss_seed = 0,
                                            miss_tail = 2,
-                                           require_pam = True)
+                                           pam = True)
         res = mod.predict(match_array)
         expected = [True, True, True, False]
         np.testing.assert_array_equal(res, expected)
@@ -180,7 +208,7 @@ class TestMismatchEstimator(object):
         mod = estimators.MismatchEstimator(seed_len = 4,
                                            miss_seed = 0,
                                            miss_tail = 1,
-                                           require_pam = True)
+                                           pam = True)
         res = mod.predict(match_array)
         expected = [True, True, False, False]
         np.testing.assert_array_equal(res, expected)

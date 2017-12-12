@@ -4,6 +4,8 @@ from sklearn.pipeline import Pipeline
 from crisprtree.preprocessing import MatchingTransformer, OneHotTransformer
 import numpy as np
 import os
+import yaml
+
 
 this_dir, this_filename = os.path.split(os.path.abspath(__file__))
 DATA_PATH = os.path.join(this_dir, '..',  "data")
@@ -15,7 +17,7 @@ class MismatchEstimator(BaseEstimator):
     binding.
     """
 
-    def __init__(self, seed_len = 4, tail_len = 16, miss_seed = 0, miss_tail = 3, require_pam = True):
+    def __init__(self, seed_len = 4, tail_len = 16, miss_seed = 0, miss_tail = 3, pam = 'NGG'):
         """
 
         Parameters
@@ -28,7 +30,7 @@ class MismatchEstimator(BaseEstimator):
             The number of mismatches allowed in the seed region.
         miss_tail : int
             The number of mismatches allowed in the tail region.
-        require_pam : bool
+        pam : bool
             Must the PAM be present
 
         Returns
@@ -40,11 +42,21 @@ class MismatchEstimator(BaseEstimator):
         self.tail_len = tail_len
         self.miss_seed = miss_seed
         self.miss_tail = miss_tail
-        self.require_pam = require_pam
+        self.pam = pam
 
-    #@staticmethod
-    #def load_yaml():
+    @staticmethod
+    def load_yaml(path):
 
+        with open(path) as handle:
+            data = yaml.load(handle)
+
+        kwargs = {'seed_len': data.get('Seed Length', 4),
+                  'tail_len': data.get('Tail Length', 16),
+                  'miss_seed': data.get('Seed Misses', 0),
+                  'miss_tail': data.get('Tail Misses', 3),
+                  'pam': data.get('PAM', 'NGG')}
+
+        return MismatchEstimator.build_pipeline(**kwargs)
 
     @staticmethod
     def build_pipeline(**kwargs):
@@ -86,7 +98,7 @@ class MismatchEstimator(BaseEstimator):
         non_seed_miss = (X[:, :-(self.seed_len)] == False).sum(axis=1)
 
         binders = (seed_miss <= self.miss_seed) & (non_seed_miss <= self.miss_tail)
-        if self.require_pam:
+        if self.pam:
             binders &= X[:, -1]
 
         return binders
