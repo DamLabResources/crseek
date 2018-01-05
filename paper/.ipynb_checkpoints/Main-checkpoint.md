@@ -35,7 +35,7 @@
  - Subclass of BaseEstimator
  - Rule based mismatch
  - MIT estimator
- - CFD estimator
+ - CFD eestimator
  
 ## Ranking Metrics
  - MIT off target score
@@ -75,7 +75,7 @@
  
  1. Load in LANL data for region
  2. Extract best hit from each sequence
- 3. Evaluate effectiveness
+ 3. Evaluate effectivness
  4. Compare predicted vs observed in IVT-cutting assay
  
  - Code Snippet using API
