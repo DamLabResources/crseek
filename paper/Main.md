@@ -49,23 +49,32 @@
 # Uses
 
 ## Task
- Finding a gRNA cutting a gene of interest but missing the rest of the genome
+ You are tasked with introducing an eGFP plasmid into the newly sequenced Thermofilum sp. NZ13-TE1 genome.
+ You want to make an spCas9 positive control knocking out the eGFP gene while missing the rest of the newly 
+ sequenced genome. The following code-snippet walks through a basic execution strategy.
  
- 1. Load gene and find all hits (what gene?)
- 2. Scan genome (using non-standard e-coli genome)
- 3. Quantify off-targets
+ 
+ 1. Load the plasmid genbank file and find the eGFP gene.
+ 2. Find all possible protospacers within the gene.
+ 3. Load in the Thermofilum genome.
+ 4. Scan all possible protospacers against the genome using the CFD matrix
+ 5. Annotate the 5 with the lowest off-target likelihood.
  
  - Code Snippet using API
  - Code Snippet using scripts
  - Summary Figure
  
 ## Task
- Creating a knock-out for every gene in the genome
+ You are tasked with creating an spCas9 knock-out library for each gene in the Thermofilum genome. 
+ You want to find 5 protospacers for each gene which have a minimum level of off-target potential.
  
- 1. Genome annotation file
- 2. Iterate through all genes
- 3. Quantify off-targets
- 4. Save top X for each gene
+ 1. Load in the Thermofilum genome.
+ 2. Iterate through all CDS annotations in the file.
+     1. Extract all possible protospacers
+     2. Scan all possible protospacers against the genome using the CFD matrix
+     3. Annotate the 5 with the lowest off-target likelihood.
+ 3. Re-annotate the Genbank record.
+ 4. Output new genbank record and spreadsheet.
  
  - Code Snippet using API
  - Summary Figure
