@@ -1,15 +1,59 @@
 from __future__ import division
-from sklearn.base import BaseEstimator
+from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.pipeline import Pipeline
 from crisprtree.preprocessing import MatchingTransformer, OneHotTransformer
+from crisprtree.utils import cas_offinder, tile_seqrecord
 import numpy as np
 import os
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
+from Bio.SeqFeature import SeqFeature
+
+from tempfile import TemporaryDirectory, NamedTemporaryFile
 
 this_dir, this_filename = os.path.split(os.path.abspath(__file__))
 DATA_PATH = os.path.join(this_dir, '..',  "data")
 
 
-class MismatchEstimator(BaseEstimator):
+class SequenceBase(BaseEstimator, ClassifierMixin):
+
+
+    @staticmethod
+    def build_pipeline(**kwargs):
+        raise NotImplementedError
+
+    def annotate_sequence(self, gRNA, seq, mismatch_tolerance = 4,
+                          exhaustive = False, extra_qualifiers=None):
+        """
+        Parameters
+        ----------
+        gRNA : Seq
+            gRNA to search
+        seq : SeqRecord
+            The sequence to query.
+        exhaustive : bool
+            If True then all positions within the seq_record are checked.
+            If False then a mismatch search is performed first.
+        mismatch_tolerance : int
+            The number of mismatches to allow if using cas-offinder
+        extra_qualifiers : dict
+            Extra qualifiers to add to the SeqFeature
+
+        Returns
+        -------
+        SeqRecord
+            An shallow-copy of the original SeqRecord with the SeqFeatures
+            filled with hits.
+        """
+        from crisprtree.annotators import annotate_grna_binding
+
+        return annotate_grna_binding(str(gRNA), seq, self,
+                                     exhaustive = exhaustive,
+                                     mismatch_tolerance = mismatch_tolerance,
+                                     extra_qualifiers = extra_qualifiers)
+
+
+class MismatchEstimator(SequenceBase):
     """
     This estimator implements a simple "number of mismatches" determination of
     binding.
@@ -89,7 +133,7 @@ class MismatchEstimator(BaseEstimator):
         return self.predict(X)
 
 
-class MITEstimator(BaseEstimator):
+class MITEstimator(SequenceBase):
 
     def __init__(self, dampen = False, cutoff = 0.75):
         """
@@ -185,7 +229,7 @@ class MITEstimator(BaseEstimator):
         return np.array(S)
 
 
-class CFDEstimator(BaseEstimator):
+class CFDEstimator(SequenceBase):
 
     def __init__(self, cutoff = 0.75):
         """

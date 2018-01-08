@@ -16,7 +16,8 @@
 
  - Write summary metrics for off-target
  - Add metric for hairpins, etc
-
+ - Make all tools use Bio objects ... check alphabet types! only \_private ones get regular strings.
+ - Standardize between Seq, SeqRecord, and SeqFeatures
 
 # Writing
  - Make schematic figure of the setup
