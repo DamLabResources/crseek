@@ -53,7 +53,6 @@
  You want to make an spCas9 positive control knocking out the eGFP gene while missing the rest of the newly 
  sequenced genome. The following code-snippet walks through a basic execution strategy.
  
- 
  1. Load the plasmid genbank file and find the eGFP gene.
  2. Find all possible protospacers within the gene.
  3. Load in the Thermofilum genome.
@@ -82,7 +81,7 @@
 ## Task
  Evaluating gRNA binding in a variable population
  
- 1. Load in LANL data for region
+ 1. Load in plasmid sequences
  2. Extract best hit from each sequence
  3. Evaluate effectivness
  4. Compare predicted vs observed in IVT-cutting assay
