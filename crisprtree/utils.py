@@ -87,8 +87,54 @@ def tile_seqrecord(grna, seq_record):
 
 
 
+def _run_casoffinder(input_path, out_path, openci_devices):
+
+    raise NotImplementedError
+
+    tdict = {'ifile': input_path,
+             'ofile': out_path,
+             'dev': openci_devices}
+    cmd = 'cas-offinder %(ifile)s %(dev)s %(ofile)s'
+
+    FNULL = open(os.devnull, 'w')
+    call_args = shlex.split(cmd % tdict)
+    try:
+        check_call(call_args, stdout=FNULL, stderr=STDOUT)
+    except FileNotFoundError:
+        raise AssertionError('cas-offinder not installed on the path')
+
+
+def _build_cas_offinder_input_file(handle, gRNAs, fasta_direc,
+                                   mismatches,
+                                   template = 'NNNNNNNNNNNNNNNNNNNNNRG'):
+    """ Utility to build the input file template for cas-offinder
+    Parameters
+    ----------
+    handle : file
+        A file like object opened for writing
+    gRNAs : list
+        Any list of Seq-like objects
+    fasta_direc : str
+        Path to the directory of fasta-files for searching
+    missmatches : int
+        Number of mismatches allowed
+    template : str
+        The template for cas-offinder searching.
+
+    Returns
+    -------
+    None
+    """
+
+    handle.write(fasta_direc + '\n')
+    handle.write(template + '\n')
+    for grna in gRNAs:
+        handle.write('%sNNN %i\n' % (grna, mismatches))
+
+
 def cas_offinder(gRNAs, mismatches, seqs = None, direc = None,
-                      openci_devices = 'G0', keeptmp = False):
+                      openci_devices = 'G0', keeptmp = False,
+                 template = 'NNNNNNNNNNNNNNNNNNNNNRG'):
     """ Call the cas-offinder tool and return the relevant info
     Parameters
     ----------
@@ -104,6 +150,8 @@ def cas_offinder(gRNAs, mismatches, seqs = None, direc = None,
         Formatted string of device-IDs acceptable to cas-offinder
     keeptmp : bool
         Keep the temporary director? Useful for debugging
+    template : str
+        The template for cas-offinder searching.
 
     Returns
     -------
@@ -133,22 +181,11 @@ def cas_offinder(gRNAs, mismatches, seqs = None, direc = None,
         out_path = os.path.join(tmpdir, 'outdata.tsv')
 
         with open(input_path, 'w') as handle:
-            handle.write(direc + '\n')
-            handle.write('NNNNNNNNNNNNNNNNNNNNNRG' + '\n')
-            for grna in gRNAs:
-                handle.write('%sNNN %i\n' % (grna, mismatches))
 
-        tdict = {'ifile': input_path,
-                 'ofile': out_path,
-                 'dev': openci_devices}
-        cmd = 'cas-offinder %(ifile)s %(dev)s %(ofile)s'
+            _build_cas_offinder_input_file(handle, gRNAs, direc, mismatches,
+                                           template = template)
 
-        FNULL = open(os.devnull, 'w')
-        call_args = shlex.split(cmd % tdict)
-        try:
-            check_call(call_args, stdout=FNULL, stderr=STDOUT)
-        except FileNotFoundError:
-            raise AssertionError('cas-offinder not installed on the path')
+        _run_casoffinder(input_path, out_path, openci_devices)
 
         out_res = []
         with open(out_path) as handle:

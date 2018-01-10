@@ -24,7 +24,7 @@ class TestAnnotateSingle(object):
 
         mod = build_estimator()
 
-        seqR = annotators.annotate_grna_binding(gRNA, seqR, mod)
+        seqR = annotators.annotate_grna_binding(gRNA, seqR, mod, exhaustive=True)
 
         assert len(seqR.features) == 1
         feat = seqR.features[0]
@@ -35,7 +35,8 @@ class TestAnnotateSingle(object):
         assert feat.qualifiers.get('gRNA') == 'A'*20
         assert feat.qualifiers.get('On Target Score') == 1
 
-    def test_basic_exhaustive(self):
+    @pytest.mark.skip(reason="Need CasOff installed")
+    def test_basic_casoffinder(self):
 
         gRNA = 'A'*20
         seqR = SeqRecord(Seq('T'*5 + 'A'*20 + 'CGG' + 'T'*40),
@@ -43,7 +44,7 @@ class TestAnnotateSingle(object):
 
         mod = build_estimator()
 
-        seqR = annotators.annotate_grna_binding(gRNA, seqR, mod, exhaustive = True)
+        seqR = annotators.annotate_grna_binding(gRNA, seqR, mod, exhaustive = False)
 
         assert len(seqR.features) == 1
         feat = seqR.features[0]
@@ -62,7 +63,7 @@ class TestAnnotateSingle(object):
 
         mod = build_estimator()
 
-        seqR = annotators.annotate_grna_binding(gRNA, seqR, mod,
+        seqR = annotators.annotate_grna_binding(gRNA, seqR, mod, exhaustive=True,
                                                 extra_qualifiers = {'Something': 'here'})
 
         assert len(seqR.features) == 1
@@ -80,7 +81,7 @@ class TestAnnotateSingle(object):
                          id = 'CheckSeq')
         mod = build_estimator()
 
-        seqR = annotators.annotate_grna_binding(gRNA, seqR, mod)
+        seqR = annotators.annotate_grna_binding(gRNA, seqR, mod, exhaustive=True)
 
         assert len(seqR.features) == 1
         feat = seqR.features[0]
