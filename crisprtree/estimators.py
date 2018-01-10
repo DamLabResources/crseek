@@ -2,7 +2,7 @@ from __future__ import division
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.pipeline import Pipeline
 from crisprtree.preprocessing import MatchingTransformer, OneHotTransformer
-from crisprtree.utils import cas_offinder, tile_seqrecord
+from crisprtree.utils import cas_offinder, tile_seqrecord, smrt_seq_convert
 import numpy as np
 import os
 from Bio.Seq import Seq
@@ -17,18 +17,19 @@ DATA_PATH = os.path.join(this_dir, '..',  "data")
 
 class SequenceBase(BaseEstimator, ClassifierMixin):
 
+    PAM = ''
 
     @staticmethod
     def build_pipeline(**kwargs):
         raise NotImplementedError
 
-    def annotate_sequence(self, gRNA, seq, mismatch_tolerance = 4,
+    def annotate_sequence(self, protospacers, seq, mismatch_tolerance = 4,
                           exhaustive = False, extra_qualifiers=None):
         """
         Parameters
         ----------
-        gRNA : Seq
-            gRNA to search
+        protospacers : list
+            List of Seq-like objects of protospacers (without PAM)
         seq : SeqRecord
             The sequence to query.
         exhaustive : bool
@@ -47,10 +48,13 @@ class SequenceBase(BaseEstimator, ClassifierMixin):
         """
         from crisprtree.annotators import annotate_grna_binding
 
-        return annotate_grna_binding(str(gRNA), seq, self,
-                                     exhaustive = exhaustive,
-                                     mismatch_tolerance = mismatch_tolerance,
-                                     extra_qualifiers = extra_qualifiers)
+        for protospacer in smrt_seq_convert('str', protospacers):
+
+            annotate_grna_binding(str(protospacer) + self.PAM, seq, self,
+                                  exhaustive = exhaustive,
+                                  mismatch_tolerance = mismatch_tolerance,
+                                  extra_qualifiers = extra_qualifiers)
+        return seq
 
 
 class MismatchEstimator(SequenceBase):
@@ -59,7 +63,8 @@ class MismatchEstimator(SequenceBase):
     binding.
     """
 
-    def __init__(self, seed_len = 4, miss_seed = 0, miss_non_seed = 3, require_pam = True):
+    def __init__(self, seed_len = 4, miss_seed = 0,
+                 miss_non_seed = 3, require_pam = True, PAM='NGG'):
         """
 
         Parameters
@@ -72,6 +77,8 @@ class MismatchEstimator(SequenceBase):
             The number of mismatches allowed in the non-seed region.
         require_pam : bool
             Must the PAM be present
+        PAM : str
+            Specific PAM
 
         Returns
         -------
@@ -83,6 +90,7 @@ class MismatchEstimator(SequenceBase):
         self.miss_seed = miss_seed
         self.miss_non_seed = miss_non_seed
         self.require_pam = require_pam
+        self.PAM = PAM
 
     @staticmethod
     def build_pipeline(**kwargs):
@@ -135,12 +143,14 @@ class MismatchEstimator(SequenceBase):
 
 class MITEstimator(SequenceBase):
 
-    def __init__(self, dampen = False, cutoff = 0.75):
+    def __init__(self, dampen = False, cutoff = 0.75, PAM = 'NGG'):
         """
         Parameters
         ----------
         cutoff : float
             Cutoff for calling binding
+        PAM : str
+            Specific PAM
 
         Returns
         -------
@@ -154,6 +164,7 @@ class MITEstimator(SequenceBase):
                                    0.389, 0.079, 0.445, 0.508, 0.613,
                                    0.851, 0.732, 0.828, 0.615, 0.804,
                                    0.685, 0.583])
+        self.PAM = PAM
 
     @staticmethod
     def build_pipeline(**kwargs):
@@ -230,13 +241,14 @@ class MITEstimator(SequenceBase):
 
 class CFDEstimator(SequenceBase):
 
-    def __init__(self, cutoff = 0.75):
+    def __init__(self, cutoff = 0.75, PAM = 'NGG'):
         """
         Parameters
         ----------
         cutoff : float
             Cutoff for calling binding
-
+        PAM : str
+            PAM to use
         Returns
         -------
 
@@ -246,6 +258,7 @@ class CFDEstimator(SequenceBase):
 
         self.cutoff = cutoff
         self._read_scores()
+        self.PAM = PAM
 
     def _read_scores(self):
 
