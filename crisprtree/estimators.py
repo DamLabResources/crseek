@@ -214,7 +214,6 @@ class MITEstimator(SequenceBase):
             d[d == np.inf] = 0
             d = np.nan_to_num(d)
 
-
         D = 1 / ((19-d) / 19 * 4 + 1)
         D[n<2] =1
         S = s1

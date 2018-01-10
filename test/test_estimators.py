@@ -224,18 +224,21 @@ class TestMITestimator(object):
         mit_est = estimators.MITEstimator()
         mit_score = mit_est.predict_proba(match_array)
 
-        cor_prob = [1.0, 0.417, 1, 0.02287424, 0.00685644, 0.10425, 0.00659549, 0]
+        cor_prob = [1,  0.417,  1,  0.986,  0.1314,  0.417,  0.1906,  0]
 
         np.testing.assert_almost_equal(cor_prob, mit_score, decimal=4)
 
     def test_build_pipeline(self):
 
         grna = 'A' * 20
-        hits = ['A' * 20 + 'AGG',
-                'A'*19 + 'T' + 'CGG',
-                'T' + 'A' * 19 + 'GGG',
-                'TT' + 'A'*18 + 'GGG',
-                'A'*5 + 'TT' + 'A'*13 + 'GGG',
+        hits = ['A' * 20 + 'CGG',  # Perfect hit
+                'A' * 19 + 'T' + 'TGG',  # One miss in seed
+                'T' + 'A' * 19 + 'GGG',  # One miss outside seed
+                'TTT' + 'A' * 17 + 'AGG',  # Three miss outside seed
+                'A' * 18 + 'GG' + 'GGG',  # Two proximal miss
+                'C' + 'A' * 18 + 'T' + 'CGG',  # Two distal miss
+                'AGAAAGAAAAAAAAAAAATA' + 'TGG',
+                'A' * 20 + 'AAG'  # Different PAM
                 ]
 
         seq_array = np.array(list(zip(cycle([grna]), hits)))
@@ -243,7 +246,7 @@ class TestMITestimator(object):
         pipe = estimators.MITEstimator.build_pipeline()
         mit_score = pipe.predict_proba(seq_array)
 
-        cor_prob = [ 1. , 0.417, 1., 0.0521978, 0.02156891]
+        cor_prob = [1,  0.417,  1,  0.986,  0.1314,  0.417,  0.1906,  0]
 
         np.testing.assert_almost_equal(cor_prob, mit_score, decimal=3)
 
@@ -261,14 +264,14 @@ class TestMITestimator(object):
                 ]
 
         match_array = make_match_array_from_seqs(grna, hits)
-        cor_prob = [True, False, True, False, False, False, False, False]
 
+        cor_prob = [True,  False,  True,  True,  False,  False,  False,  False]
         mit_est = estimators.MITEstimator(cutoff = 0.75)
         mit_cut = mit_est.predict(match_array)
 
         np.testing.assert_equal(cor_prob, mit_cut)
-        cor_prob = [True, True, True, True, False, True, False, False]
 
+        cor_prob = [True,  True,  True,  True,  True,  True,  True,  False]
         mit_est = estimators.MITEstimator(cutoff = 0.01)
         mit_cut = mit_est.predict(match_array)
 
@@ -284,13 +287,12 @@ class TestMITestimator(object):
 
         match_array = make_match_array_from_seqs(grna, hits)
 
-        mit_est = estimators.MITEstimator(cutoff = 0.75)
+        mit_est = estimators.MITEstimator(cutoff = 0.05)
         mit_cut = mit_est.predict(match_array)
 
-        cor_prob = [True, False, True, False]
+        cor_prob = [True, True, True, False]
 
         np.testing.assert_equal(cor_prob, mit_cut)
-
 
 
 class TestCFDEstimator(object):
