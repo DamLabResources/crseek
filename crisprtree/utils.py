@@ -1,5 +1,5 @@
 from Bio.SeqRecord import SeqRecord
-from Bio.Seq import reverse_complement
+from Bio.Seq import reverse_complement, Seq
 from Bio import SeqIO
 import pandas as pd
 import numpy as np
@@ -8,11 +8,68 @@ from io import StringIO, BytesIO
 from subprocess import check_call, STDOUT, check_output,CalledProcessError
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from Bio.SeqUtils import nt_search
-from Bio.Seq import reverse_complement
+from Bio.Alphabet import generic_alphabet
 
 import csv
 
 import os
+
+
+def smrt_seq_convert(outfmt, seqs, default_phred=None,
+                     alphabet=generic_alphabet):
+    """Converts iterable of any sequence type into another format.
+
+    This function transparently converts sequence objects (even mixed lists)
+    into any other sequence representation. Input and output data can be
+    Bio.SeqRecord, Bio.Seq, str, or (name, str) tuples. If the `default_phred`
+    kwarg is provided then it will transparently add default quality scores.
+
+    If names are needed for the output format but are not included ('str'
+    and 'Seq' inputs) then the ids are generated using the position in the
+    iterable.
+
+    Parameters
+    ----------
+    outfmt : { 'str', 'SeqRecord', 'Seq', 'tuple' }
+        The desired output format.
+    seqs : iterable
+        An iterable of sequences. They can be any of the above formats.
+    default_phred : int, optional
+        The default phred-score to give to every call when outputing a
+        SeqRecord format.
+    alphabet : Bio.Alphabet.generic_nucleotide, optional.
+        The alphabet to use when generating the Seq and SeqRecord objects.
+
+    Returns
+    -------
+    generator
+        A generator object yielding the records in the desired format.
+    """
+
+    possible_formats = {'str': lambda x: str(x.seq),
+                        'SeqRecord': lambda x: x,
+                        'Seq': lambda x: x.seq,
+                        'tuple': lambda x: (x.id, str(x.seq))}
+    assert outfmt in possible_formats
+    for num, seq_obj in enumerate(seqs):
+        if isinstance(seq_obj, SeqRecord):
+            seq_rec = seq_obj
+        elif isinstance(seq_obj, Seq):
+            seq_rec = SeqRecord(seq_obj, id='Seq-%i' % num)
+        elif isinstance(seq_obj, str):
+            seq_rec = SeqRecord(Seq(seq_obj, alphabet=alphabet),
+                                          id='Seq-%i' % num)
+        elif isinstance(seq_obj, tuple):
+            seq_rec = SeqRecord(Seq(seq_obj[1], alphabet=alphabet),
+                                          id=seq_obj[0])
+        else:
+            raise AssertionError("Don't understand obj of type: %s" % type(seq_obj))
+
+        if default_phred and ('phred_quality' not in seq_rec.letter_annotations):
+            seq_rec.letter_annotations['phred_quality'] = [default_phred]*len(seq_rec)
+
+        yield possible_formats[outfmt](seq_rec)
+
 
 
 def extract_possible_targets(seq_record, pams = ('NGG',), both_strands = True):

@@ -10,6 +10,68 @@ import os
 import pytest
 import csv
 from unittest.mock import patch
+from itertools import product
+from Bio.Alphabet import generic_alphabet
+import numpy as np
+
+formats = ['SeqRecord', 'Seq', 'str', 'tuple']
+fmts = list(product(formats, formats))+[('array', 'str')]
+
+@pytest.mark.parametrize("iofmts", fmts)
+def test_smrt_seq_write(iofmts):
+
+    orig_seqs = [SeqRecord(Seq('AAAAAA',alphabet=generic_alphabet),
+                      id = 'A'),
+            SeqRecord(Seq('TTTTT',alphabet=generic_alphabet),
+                      id = 'B'),
+            SeqRecord(Seq('GGGGGG',alphabet=generic_alphabet),
+                      id = 'C')]
+
+    infmt, outfmt = iofmts
+    if infmt == 'SeqRecord':
+        seqs = [f for f in orig_seqs]
+    elif infmt == 'Seq':
+        seqs = [f.seq for f in orig_seqs]
+    elif infmt == 'str':
+        seqs = [str(f.seq) for f in orig_seqs]
+    elif infmt == 'array':
+        seqs = np.array([str(f.seq) for f in orig_seqs])
+    elif infmt == 'tuple':
+        seqs = []
+        for num, f in enumerate(orig_seqs):
+            seqs.append(('S-%i' % num, str(f.seq)))
+    else:
+        raise AssertionError('Unknown input format %s' % infmt)
+
+    rec_out = list(utils.smrt_seq_convert(outfmt, seqs))
+    rec_inp = orig_seqs
+    assert len(rec_out) == 3
+    for num, (out, inp) in enumerate(zip(rec_out, rec_inp)):
+        if infmt == 'SeqRecord':
+            inname = inp.id
+        elif infmt == 'tuple':
+            inname = 'S-%i' % num
+        else:
+            inname = 'Seq-%i' % num
+
+        if outfmt == 'SeqRecord':
+            outname = out.id
+            outseq = str(out.seq)
+        elif outfmt == 'Seq':
+            outname = None
+            outseq = str(out)
+        elif outfmt == 'str':
+            outname = None
+            outseq = out
+        elif outfmt == 'tuple':
+            outname, outseq = out
+        else:
+            raise AssertionError('Unknown outformat: %s' % outfmt)
+
+        if outname:
+            assert outname == inname
+
+        assert outseq == str(inp.seq)
 
 
 class TestExtract(object):
