@@ -5,7 +5,11 @@ from Bio.Seq import Seq, reverse_complement
 import interlap
 
 
+
+
+
 def check_grna_across_seqs(grna, seqs, estimator, index=None):
+
     """ Simple utility function to check all sequences against a single gRNA
 
     Parameters
@@ -72,9 +76,14 @@ def check_grna_across_seqs(grna, seqs, estimator, index=None):
     df['Target'] = targets
     df['Value'] = res
 
+
     def fix_agg(rows):
         idx = rows['Value'].idxmax()
         return rows.ix[idx]
+
+
+
+
 
 
     out = df.groupby('Index')[['Value', 'Target', 'Position', 'Strand']].agg(fix_agg)
@@ -82,6 +91,7 @@ def check_grna_across_seqs(grna, seqs, estimator, index=None):
 
     if index is not None:
         out.index = index
+
 
     return out
 

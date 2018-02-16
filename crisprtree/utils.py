@@ -30,7 +30,7 @@ def extract_possible_targets(seq_record, pams = ('NGG',), both_strands = True):
     -------
 
     list
-        Targets including PAM in 5-3 orientation.
+        Targets excluding PAM in 5-3 orientation.
 
     """
 
@@ -39,15 +39,15 @@ def extract_possible_targets(seq_record, pams = ('NGG',), both_strands = True):
     found = set()
     for pam in pams:
         for res in nt_search(st_seq, pam)[1:]:
-            found.add(st_seq[res-20:res+3])
+            found.add(st_seq[res-20:res])
 
     if both_strands:
         rseq = reverse_complement(st_seq)
         for pam in pams:
             for res in nt_search(rseq, pam)[1:]:
-                found.add(rseq[res-20:res+3])
+                found.add(rseq[res-20:res])
 
-    return sorted(found)
+    return sorted(f for f in found if len(f) == 20)
 
 
 def tile_seqrecord(grna, seq_record):

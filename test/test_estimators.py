@@ -207,12 +207,16 @@ class TestMITestimator(object):
 
     def test_mit_score(self):
 
-        grna = 'A' * 20
-        hits = ['A' * 20 + 'AGG',
-                'A'*19 + 'T' + 'CGG',
-                'T' + 'A' * 19 + 'GGG',
-                'TT' + 'A'*18 + 'GGG',
-                'A'*5 + 'TT' + 'A'*13 + 'GGG',
+
+        grna = 'AAAAAAAAAAAAAAAAAAAA'
+        hits = ['A' * 20 + 'CGG',  # Perfect hit
+                'A' * 19 + 'T' + 'TGG',  # One miss in seed
+                'T' + 'A' * 19 + 'GGG',  # One miss outside seed
+                'TTT' + 'A' * 17 + 'AGG',  # Three miss outside seed
+                'A' * 18 + 'GG' + 'GGG',  # Two proximal miss
+                'C' + 'A' * 18 + 'T' + 'CGG',  # Two distal miss
+                'AGAAAGAAAAAAAAAAAATA' + 'TGG',
+                'A' * 20 + 'AAG'  # Different PAM
                 ]
 
         match_array = make_match_array_from_seqs(grna, hits)
@@ -220,9 +224,9 @@ class TestMITestimator(object):
         mit_est = estimators.MITEstimator()
         mit_score = mit_est.predict_proba(match_array)
 
-        cor_prob = [1.0, 0.417, 1, 0.206, 0.0851]
+        cor_prob = [1.0, 0.417, 1, 0.02287424, 0.00685644, 0.10425, 0.00659549, 0]
 
-        np.testing.assert_almost_equal(cor_prob, mit_score, decimal=3)
+        np.testing.assert_almost_equal(cor_prob, mit_score, decimal=4)
 
     def test_build_pipeline(self):
 
@@ -239,30 +243,33 @@ class TestMITestimator(object):
         pipe = estimators.MITEstimator.build_pipeline()
         mit_score = pipe.predict_proba(seq_array)
 
-        cor_prob = [1.0, 0.417, 1, 0.206, 0.0851]
+        cor_prob = [ 1. , 0.417, 1., 0.0521978, 0.02156891]
 
         np.testing.assert_almost_equal(cor_prob, mit_score, decimal=3)
 
     def test_cutoff(self):
 
-        grna = 'A' * 20
-        hits = ['A' * 20 + 'AGG',
-                'A'*19 + 'T' + 'CGG',
-                'T' + 'A' * 19 + 'GGG',
-                'TT' + 'A' * 18 + 'GGG',
-                'A'*5 + 'TT' + 'A'*13 + 'GGG'
+        grna = 'AAAAAAAAAAAAAAAAAAAA'
+        hits = ['A' * 20 + 'CGG',  # Perfect hit
+                'A' * 19 + 'T' + 'TGG',  # One miss in seed
+                'T' + 'A' * 19 + 'GGG',  # One miss outside seed
+                'TTT' + 'A' * 17 + 'AGG',  # Three miss outside seed
+                'A' * 18 + 'GG' + 'GGG',  # Two proximal miss
+                'C' + 'A' * 18 + 'T' + 'CGG',  # Two distal miss
+                'AGAAAGAAAAAAAAAAAATA' + 'TGG',
+                'A' * 20 + 'AAG'  # Different PAM
                 ]
 
         match_array = make_match_array_from_seqs(grna, hits)
-        cor_prob = [True, False, True, False, False]
+        cor_prob = [True, False, True, False, False, False, False, False]
 
         mit_est = estimators.MITEstimator(cutoff = 0.75)
         mit_cut = mit_est.predict(match_array)
 
         np.testing.assert_equal(cor_prob, mit_cut)
-        cor_prob = [True, True, True, True, False]
+        cor_prob = [True, True, True, True, False, True, False, False]
 
-        mit_est = estimators.MITEstimator(cutoff = 0.2)
+        mit_est = estimators.MITEstimator(cutoff = 0.01)
         mit_cut = mit_est.predict(match_array)
 
         np.testing.assert_equal(cor_prob, mit_cut)
