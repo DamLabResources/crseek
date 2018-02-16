@@ -84,7 +84,7 @@ class TestMismatchEstimator(object):
         mod = estimators.MismatchEstimator(seed_len = 4,
                                            miss_seed = 0,
                                            miss_tail = 2,
-                                           pam = True)
+                                           pam = 'NGG')
         res = mod.predict(match_array)
 
         np.testing.assert_array_equal(res, expected)
@@ -105,10 +105,19 @@ class TestMismatchEstimator(object):
         pipe = estimators.MismatchEstimator.build_pipeline(seed_len = 4,
                                                            miss_seed = 0,
                                                            miss_tail = 2,
-                                                           pam = True)
+                                                           pam = 'NGG')
 
         res = pipe.predict(seq_array)
         np.testing.assert_array_equal(res, expected)
+
+
+        # Make sure things are available from the Pipeline object
+
+        assert pipe.matcher.seed_len == 4
+        assert pipe.matcher.tail_len == 16
+        assert pipe.matcher.miss_seed == 0
+        assert pipe.matcher.miss_tail == 2
+        assert pipe.matcher.pam == 'NGG'
 
     def test_load_yaml(self):
 
@@ -148,7 +157,7 @@ class TestMismatchEstimator(object):
         mod = estimators.MismatchEstimator(seed_len = 2,
                                            miss_seed = 0,
                                            miss_tail = 2,
-                                           pam = True)
+                                           pam = 'NGG')
         res = mod.predict(match_array)
         expected = [True, False, False, True, True]
         np.testing.assert_array_equal(res, expected)
@@ -156,7 +165,7 @@ class TestMismatchEstimator(object):
         mod = estimators.MismatchEstimator(seed_len = 3,
                                            miss_seed = 0,
                                            miss_tail = 2,
-                                           pam = True)
+                                           pam = 'NGG')
         res = mod.predict(match_array)
         expected = [True, False, False, False, True]
         np.testing.assert_array_equal(res, expected)
@@ -174,7 +183,7 @@ class TestMismatchEstimator(object):
         mod = estimators.MismatchEstimator(seed_len = 4,
                                            miss_seed = 1,
                                            miss_tail = 2,
-                                           pam = True)
+                                           pam = 'NGG')
         res = mod.predict(match_array)
         expected = [True, True, False, False]
         np.testing.assert_array_equal(res, expected)
@@ -182,7 +191,7 @@ class TestMismatchEstimator(object):
         mod = estimators.MismatchEstimator(seed_len = 4,
                                            miss_seed = 2,
                                            miss_tail = 2,
-                                           pam = True)
+                                           pam = 'NGG')
         res = mod.predict(match_array)
         expected = [True, True, True, False]
         np.testing.assert_array_equal(res, expected)
@@ -200,7 +209,7 @@ class TestMismatchEstimator(object):
         mod = estimators.MismatchEstimator(seed_len = 4,
                                            miss_seed = 0,
                                            miss_tail = 2,
-                                           pam = True)
+                                           pam = 'NGG')
         res = mod.predict(match_array)
         expected = [True, True, True, False]
         np.testing.assert_array_equal(res, expected)
@@ -208,7 +217,7 @@ class TestMismatchEstimator(object):
         mod = estimators.MismatchEstimator(seed_len = 4,
                                            miss_seed = 0,
                                            miss_tail = 1,
-                                           pam = True)
+                                           pam = 'NGG')
         res = mod.predict(match_array)
         expected = [True, True, False, False]
         np.testing.assert_array_equal(res, expected)

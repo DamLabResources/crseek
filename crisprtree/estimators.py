@@ -30,7 +30,7 @@ class MismatchEstimator(BaseEstimator):
             The number of mismatches allowed in the seed region.
         miss_tail : int
             The number of mismatches allowed in the tail region.
-        pam : bool
+        pam : str
             Must the PAM be present
 
         Returns
@@ -74,6 +74,8 @@ class MismatchEstimator(BaseEstimator):
 
         pipe = Pipeline(steps = [('transform', MatchingTransformer()),
                                  ('predict', MismatchEstimator(**kwargs))])
+        pipe.matcher = pipe.steps[1][1]
+
         return pipe
 
     def fit(self, X, y = None):
