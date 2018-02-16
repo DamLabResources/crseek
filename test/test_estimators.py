@@ -223,8 +223,6 @@ class TestMismatchEstimator(object):
         np.testing.assert_array_equal(res, expected)
 
 
-
-
 class TestMITestimator(object):
 
     def test_raises_value_error_on_wrong_size(self):
@@ -314,6 +312,96 @@ class TestMITestimator(object):
         cor_prob = [True, False, True, False]
 
         np.testing.assert_equal(cor_prob, mit_cut)
+
+
+class TestKineticEstimator(object):
+
+    def test_raises_value_error_on_wrong_size(self):
+
+        mod = estimators.KineticEstimator()
+        check = np.ones((5, 20))
+
+        with pytest.raises(ValueError):
+            mod.predict(check)
+
+    def test_kin_score(self):
+
+        grna = 'A' * 20
+        hits = ['A' * 20 + 'AGG',
+                'A'*19 + 'T' + 'CGG',
+                'T' + 'A' * 19 + 'GGG',
+                'TT' + 'A'*18 + 'GGG',
+                'A'*5 + 'TT' + 'A'*13 + 'GGG',
+                ]
+
+        match_array = make_match_array_from_seqs(grna, hits)
+
+        est = estimators.KineticEstimator()
+        score = est.predict_proba(match_array)
+
+        cor_prob = [1.0, 1.12701e-8, 0.7399, 0.5475, 0.5447311]
+
+        np.testing.assert_almost_equal(cor_prob, score, decimal=3)
+
+    def test_build_pipeline(self):
+
+        grna = 'A' * 20
+        hits = ['A' * 20 + 'AGG',
+                'A'*19 + 'T' + 'CGG',
+                'T' + 'A' * 19 + 'GGG',
+                'TT' + 'A'*18 + 'GGG',
+                'A'*5 + 'TT' + 'A'*13 + 'GGG',
+                ]
+
+        seq_array = np.array(list(zip(cycle([grna]), hits)))
+
+        pipe = estimators.KineticEstimator.build_pipeline()
+        score = pipe.predict_proba(seq_array)
+
+        cor_prob = [1.0, 1.12701e-8, 0.7399, 0.5475, 0.5447311]
+
+        np.testing.assert_almost_equal(cor_prob, score, decimal=3)
+
+    def test_cutoff(self):
+
+        grna = 'A' * 20
+        hits = ['A' * 20 + 'AGG',
+                'A'*19 + 'T' + 'CGG',
+                'T' + 'A' * 19 + 'GGG',
+                'TT' + 'A' * 18 + 'GGG',
+                'A'*5 + 'TT' + 'A'*13 + 'GGG'
+                ]
+
+        match_array = make_match_array_from_seqs(grna, hits)
+        est = estimators.KineticEstimator(cutoff = 0.75)
+        cut = est.predict(match_array)
+
+        cor_prob = [True, False, False, False, False]
+        np.testing.assert_equal(cor_prob, cut)
+
+        est = estimators.KineticEstimator(cutoff = 0.2)
+        cut = est.predict(match_array)
+
+        cor_prob = [True, False, True, True, True]
+        np.testing.assert_equal(cor_prob, cut)
+
+    def test_requires_pam(self):
+
+        grna = 'A' * 20
+        hits = ['A' * 20 + 'AGG',
+                'A'*19 + 'T' + 'CGG',
+                'T' + 'A' * 19 + 'GGG',
+                'A' * 20 + 'ATG',]
+
+        match_array = make_match_array_from_seqs(grna, hits)
+
+        est = estimators.KineticEstimator(cutoff = 0.50)
+        cut = est.predict(match_array)
+
+        cor_prob = [True, False, True, False]
+
+        np.testing.assert_equal(cor_prob, cut)
+
 
 
 

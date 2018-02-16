@@ -260,3 +260,110 @@ class CFDEstimator(BaseEstimator):
 
 
 
+class KineticEstimator(BaseEstimator):
+
+    def __init__(self, nseed = 11, dC = 1.8, Pmax = 0.74, variant = None,
+                 dI = None, npair = None, pam = 'NGG', cutoff = 0.5):
+        """
+        Parameters
+        ----------
+        nseed : int
+            Position at which half of single-missmatches will fail to cleave their target
+        dC : float
+            Free energy associated with a correct binding pair.
+        Pmax : float
+            The maximal cleavage efficiency of any single missmatch target
+        variant : str
+            Name of variant described in the paper. Must be:
+             {spCas9,LbCpf1, AsCpf1}
+             Sets all appropriate constants
+        dI : float
+            Free energy gain associated with an incorrect binding pair.
+            Currently unused.
+        npair : int
+            Allowable distance between missmathes. Currently unused.
+        pam : str
+            PAM sequence.
+        cutoff : float
+            Probability cutoff to use when making binary comparisons.
+
+        Returns
+        -------
+
+        KineticEstimator
+
+        """
+
+        if variant is not None:
+            # Values taken from Figure 6: https://doi.org/10.1016/j.celrep.2018.01.045
+            # Klein et al, Cell Reports, Feb 2018
+            knowns = {'spCas9': {'nseed': 11, 'dC': 1.8, 'Pmax': 0.74, 'pam': 'NGG'},
+                      'LbCpf1': {'nseed': 19, 'dC': 2.1, 'Pmax': 0.83, 'pam': 'NGG'},
+                      'AsCpf1': {'nseed': 19, 'dC': 4, 'Pmax': 0.83, 'pam': 'NGG'}}
+            try:
+                data = knowns[variant]
+            except KeyError:
+                msg = 'Variant must be one of {spCas9,LbCpf1, AsCpf1} got: %s' % variant
+                raise ValueError(msg)
+
+            self.nseed = data['nseed']
+            self.dC = data['dC']
+            self.Pmax = data['Pmax']
+            self.pam = data['pam']
+
+        else:
+            self.nseed = nseed
+            self.dC = dC
+            self.Pmax = Pmax
+            self.pam = pam
+
+        self.cutoff = cutoff
+
+
+    @staticmethod
+    def build_pipeline(**kwargs):
+        """ Utility function to build a pipeline.
+        Parameters
+        ----------
+        Keyword arguements are passed to the Estimator on __init__
+
+        Returns
+        -------
+
+        Pipeline
+
+        """
+
+        pipe = Pipeline(steps = [('transform', MatchingTransformer()),
+                                 ('predict', KineticEstimator(**kwargs))])
+        return pipe
+
+    def fit(self, X, y=None):
+        return self
+
+    def predict(self, X):
+
+        return self.predict_proba(X) >= self.cutoff
+
+
+    def predict_proba(self, X):
+
+        if X.shape[1] != 21:
+            raise ValueError('Input array shape must be Nx21')
+
+        # Input array  : Position 0 => PAM distal region
+        # Klein model  : Position 0 => PAM proximal region
+
+        pos = np.arange(20, 0, -1)
+        pclv = self.Pmax/(1+np.exp(-(pos-self.nseed)*self.dC))
+
+        vals = pclv*(X[:,:-1]==False)
+
+        scores = np.ones_like(vals)
+        scores[X[:,:-1]==False] = vals[X[:,:-1]==False]
+
+        probs = scores.prod(axis=1)
+
+        # PAMs must be present
+        probs *= X[:, -1]
+        return probs
