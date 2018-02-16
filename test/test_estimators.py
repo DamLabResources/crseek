@@ -7,6 +7,7 @@ from tempfile import NamedTemporaryFile
 import os
 import yaml
 from sklearn.pipeline import Pipeline
+from sklearn.base import BaseEstimator
 
 
 
@@ -53,71 +54,117 @@ def make_onehot_array_from_seqs(grna, seqs):
     return preprocessing.OneHotTransformer().transform(seq_array)
 
 
-class TestMismatchEstimator(object):
 
+class BaseChecker(object):
+
+    hits = ['A'*20 + 'AGG',          # Perfect hit
+            'A'*19 + 'T' + 'AGG',    # One miss in seed
+            'T' + 'A'*19 + 'AGG',    # One miss outside seed
+            'TTT' + 'A'*17 + 'AGG',  # Three miss outside seed
+            'A'*20 + 'ATG'           # No PAM
+            ]
+    expected = [0, 0, 0, 0, 0]
+    prob = None
+
+    estimator = None
+    pipeline = None
+
+    def _make_match_array(self, grna, hits):
+        return make_match_array_from_seqs(grna, hits)
+
+    def test_raises_value_error_on_wrong_size(self):
+
+        check = np.ones((5, 20))
+
+        with pytest.raises(ValueError):
+            self.estimator.predict(check)
+
+    def test_basic_predict(self):
+        grna = 'A'*20
+
+        if self.estimator is None:
+            raise NotImplementedError
+
+        match_array = self._make_match_array(grna, self.hits)
+
+        res = self.estimator.predict(match_array)
+        np.testing.assert_array_equal(res, self.expected)
+
+    def test_predict_proba(self):
+
+        if self.prob is not None:
+            grna = 'A'*20
+
+            if self.estimator is None:
+                raise NotImplementedError
+
+            match_array = self._make_match_array(grna, self.hits)
+
+            res = self.estimator.predict_proba(match_array)
+            np.testing.assert_almost_equal(res, self.prob, decimal=3)
+
+    def test_change_cutoff(self):
+
+        if self.prob is not None:
+            grna = 'A'*20
+
+            if self.estimator is None:
+                raise NotImplementedError
+
+            match_array = self._make_match_array(grna, self.hits)
+
+            self.estimator.cutoff = 0.2
+            res = self.estimator.predict(match_array)
+            np.testing.assert_array_equal(res, np.array(self.prob)>0.2)
+
+            self.estimator.cutoff = 0.5
+            res = self.estimator.predict(match_array)
+            np.testing.assert_array_equal(res, np.array(self.prob)>0.5)
+
+            self.estimator.cutoff = 0.8
+            res = self.estimator.predict(match_array)
+            np.testing.assert_array_equal(res, np.array(self.prob)>0.8)
+
+    def test_build_pipeline(self):
+        grna = 'A'*20
+
+        if self.pipeline is None:
+            raise NotImplementedError
+
+        seq_array = np.array(list(zip(cycle([grna]), self.hits)))
+
+        res = self.pipeline.predict(seq_array)
+        np.testing.assert_array_equal(res, self.expected)
+
+
+class TestMismatchEstimator(BaseChecker):
+
+    hits = ['A'*20 + 'AGG',          # Perfect hit
+            'A'*19 + 'T' + 'AGG',    # One miss in seed
+            'T' + 'A'*19 + 'AGG',    # One miss outside seed
+            'TTT' + 'A'*17 + 'AGG',  # Three miss outside seed
+            'A'*20 + 'ATG'           # No PAM
+            ]
+    expected = [True, False, True, False, False]
+    prob = None
+
+    estimator = estimators.MismatchEstimator(seed_len = 4, miss_seed = 0,
+                                             miss_tail = 2, pam = 'NGG')
+    pipeline = estimators.MismatchEstimator.build_pipeline(seed_len = 4,
+                                                           miss_seed = 0,
+                                                           miss_tail = 2,
+                                                           pam = 'NGG')
     def test_init(self):
 
         mod = estimators.MismatchEstimator()
 
-    def test_raises_value_error_on_wrong_size(self):
+    def test_check_pipeline(self):
 
-        mod = estimators.MismatchEstimator()
-        check = np.ones((5, 20))
-
-        with pytest.raises(ValueError):
-            mod.predict(check)
-
-
-    def test_basic_predict(self):
-
-        grna = 'A'*20
-        hits = ['A'*20 + 'AGG',          # Perfect hit
-                'A'*19 + 'T' + 'AGG',    # One miss in seed
-                'T' + 'A'*19 + 'AGG',    # One miss outside seed
-                'TTT' + 'A'*17 + 'AGG',  # Three miss outside seed
-                'A'*20 + 'ATG'           # No PAM
-                ]
-        expected = [True, False, True, False, False]
-
-        match_array = make_match_array_from_seqs(grna, hits)
-
-        mod = estimators.MismatchEstimator(seed_len = 4,
-                                           miss_seed = 0,
-                                           miss_tail = 2,
-                                           pam = 'NGG')
-        res = mod.predict(match_array)
-
-        np.testing.assert_array_equal(res, expected)
-
-    def test_build_pipeline(self):
-
-        grna = 'A'*20
-        hits = ['A'*20 + 'AGG',          # Perfect hit
-                'A'*19 + 'T' + 'AGG',    # One miss in seed
-                'T' + 'A'*19 + 'AGG',    # One miss outside seed
-                'TTT' + 'A'*17 + 'AGG',  # Three miss outside seed
-                'A'*20 + 'ATG'           # No PAM
-                ]
-        expected = [True, False, True, False, False]
-
-        seq_array = np.array(list(zip(cycle([grna]), hits)))
-
-        pipe = estimators.MismatchEstimator.build_pipeline(seed_len = 4,
-                                                           miss_seed = 0,
-                                                           miss_tail = 2,
-                                                           pam = 'NGG')
-
-        res = pipe.predict(seq_array)
-        np.testing.assert_array_equal(res, expected)
-
-
-        # Make sure things are available from the Pipeline object
-
-        assert pipe.matcher.seed_len == 4
-        assert pipe.matcher.tail_len == 16
-        assert pipe.matcher.miss_seed == 0
-        assert pipe.matcher.miss_tail == 2
-        assert pipe.matcher.pam == 'NGG'
+        assert self.pipeline.matcher.seed_len == 4
+        assert self.pipeline.matcher.tail_len == 16
+        assert self.pipeline.matcher.miss_seed == 0
+        assert self.pipeline.matcher.miss_tail == 2
+        assert self.pipeline.matcher.pam == 'NGG'
 
     def test_load_yaml(self):
 
@@ -152,7 +199,7 @@ class TestMismatchEstimator(object):
                 'A'*17 + 'TAA' + 'AGG',
                 'A'*16 + 'TAAA' + 'AGG',]
 
-        match_array = make_match_array_from_seqs(grna, hits)
+        match_array = self._make_match_array(grna, hits)
 
         mod = estimators.MismatchEstimator(seed_len = 2,
                                            miss_seed = 0,
@@ -176,9 +223,9 @@ class TestMismatchEstimator(object):
         hits = ['A'*20 + 'AGG',
                 'A'*19 + 'T' + 'AGG',
                 'A'*18 + 'TT' + 'AGG',
-                'A'*17 + 'TTT' + 'AGG',]
+                'A'*17 + 'TTT' + 'AGG']
 
-        match_array = make_match_array_from_seqs(grna, hits)
+        match_array = self._make_match_array(grna, hits)
 
         mod = estimators.MismatchEstimator(seed_len = 4,
                                            miss_seed = 1,
@@ -223,78 +270,18 @@ class TestMismatchEstimator(object):
         np.testing.assert_array_equal(res, expected)
 
 
-class TestMITestimator(object):
+class TestMITestimator(BaseChecker):
 
-    def test_raises_value_error_on_wrong_size(self):
+    hits = ['A' * 20 + 'AGG',
+            'A'*19 + 'T' + 'CGG',
+            'T' + 'A' * 19 + 'GGG',
+            'TT' + 'A'*18 + 'GGG',
+            'A'*5 + 'TT' + 'A'*13 + 'GGG']
+    expected = [True, False, True, False, False]
+    prob = [1.0, 0.417, 1, 0.206, 0.0851]
 
-        mod = estimators.MITEstimator()
-        check = np.ones((5, 20))
-
-        with pytest.raises(ValueError):
-            mod.predict(check)
-
-
-    def test_mit_score(self):
-
-        grna = 'A' * 20
-        hits = ['A' * 20 + 'AGG',
-                'A'*19 + 'T' + 'CGG',
-                'T' + 'A' * 19 + 'GGG',
-                'TT' + 'A'*18 + 'GGG',
-                'A'*5 + 'TT' + 'A'*13 + 'GGG',
-                ]
-
-        match_array = make_match_array_from_seqs(grna, hits)
-
-        mit_est = estimators.MITEstimator()
-        mit_score = mit_est.predict_proba(match_array)
-
-        cor_prob = [1.0, 0.417, 1, 0.206, 0.0851]
-
-        np.testing.assert_almost_equal(cor_prob, mit_score, decimal=3)
-
-    def test_build_pipeline(self):
-
-        grna = 'A' * 20
-        hits = ['A' * 20 + 'AGG',
-                'A'*19 + 'T' + 'CGG',
-                'T' + 'A' * 19 + 'GGG',
-                'TT' + 'A'*18 + 'GGG',
-                'A'*5 + 'TT' + 'A'*13 + 'GGG',
-                ]
-
-        seq_array = np.array(list(zip(cycle([grna]), hits)))
-
-        pipe = estimators.MITEstimator.build_pipeline()
-        mit_score = pipe.predict_proba(seq_array)
-
-        cor_prob = [1.0, 0.417, 1, 0.206, 0.0851]
-
-        np.testing.assert_almost_equal(cor_prob, mit_score, decimal=3)
-
-    def test_cutoff(self):
-
-        grna = 'A' * 20
-        hits = ['A' * 20 + 'AGG',
-                'A'*19 + 'T' + 'CGG',
-                'T' + 'A' * 19 + 'GGG',
-                'TT' + 'A' * 18 + 'GGG',
-                'A'*5 + 'TT' + 'A'*13 + 'GGG'
-                ]
-
-        match_array = make_match_array_from_seqs(grna, hits)
-        cor_prob = [True, False, True, False, False]
-
-        mit_est = estimators.MITEstimator(cutoff = 0.75)
-        mit_cut = mit_est.predict(match_array)
-
-        np.testing.assert_equal(cor_prob, mit_cut)
-        cor_prob = [True, True, True, True, False]
-
-        mit_est = estimators.MITEstimator(cutoff = 0.2)
-        mit_cut = mit_est.predict(match_array)
-
-        np.testing.assert_equal(cor_prob, mit_cut)
+    estimator = estimators.MITEstimator()
+    pipeline = estimators.MITEstimator.build_pipeline()
 
     def test_requires_pam(self):
 
@@ -314,76 +301,18 @@ class TestMITestimator(object):
         np.testing.assert_equal(cor_prob, mit_cut)
 
 
-class TestKineticEstimator(object):
+class TestKineticEstimator(BaseChecker):
 
-    def test_raises_value_error_on_wrong_size(self):
+    hits = ['A' * 20 + 'AGG',
+            'A'*19 + 'T' + 'CGG',
+            'T' + 'A' * 19 + 'GGG',
+            'TT' + 'A'*18 + 'GGG',
+            'A'*5 + 'TT' + 'A'*13 + 'GGG']
+    expected = [True, False, True, True, True]
+    prob = [1.0, 1.12701e-8, 0.7399, 0.5475, 0.5447311]
 
-        mod = estimators.KineticEstimator()
-        check = np.ones((5, 20))
-
-        with pytest.raises(ValueError):
-            mod.predict(check)
-
-    def test_kin_score(self):
-
-        grna = 'A' * 20
-        hits = ['A' * 20 + 'AGG',
-                'A'*19 + 'T' + 'CGG',
-                'T' + 'A' * 19 + 'GGG',
-                'TT' + 'A'*18 + 'GGG',
-                'A'*5 + 'TT' + 'A'*13 + 'GGG',
-                ]
-
-        match_array = make_match_array_from_seqs(grna, hits)
-
-        est = estimators.KineticEstimator()
-        score = est.predict_proba(match_array)
-
-        cor_prob = [1.0, 1.12701e-8, 0.7399, 0.5475, 0.5447311]
-
-        np.testing.assert_almost_equal(cor_prob, score, decimal=3)
-
-    def test_build_pipeline(self):
-
-        grna = 'A' * 20
-        hits = ['A' * 20 + 'AGG',
-                'A'*19 + 'T' + 'CGG',
-                'T' + 'A' * 19 + 'GGG',
-                'TT' + 'A'*18 + 'GGG',
-                'A'*5 + 'TT' + 'A'*13 + 'GGG',
-                ]
-
-        seq_array = np.array(list(zip(cycle([grna]), hits)))
-
-        pipe = estimators.KineticEstimator.build_pipeline()
-        score = pipe.predict_proba(seq_array)
-
-        cor_prob = [1.0, 1.12701e-8, 0.7399, 0.5475, 0.5447311]
-
-        np.testing.assert_almost_equal(cor_prob, score, decimal=3)
-
-    def test_cutoff(self):
-
-        grna = 'A' * 20
-        hits = ['A' * 20 + 'AGG',
-                'A'*19 + 'T' + 'CGG',
-                'T' + 'A' * 19 + 'GGG',
-                'TT' + 'A' * 18 + 'GGG',
-                'A'*5 + 'TT' + 'A'*13 + 'GGG'
-                ]
-
-        match_array = make_match_array_from_seqs(grna, hits)
-        est = estimators.KineticEstimator(cutoff = 0.75)
-        cut = est.predict(match_array)
-
-        cor_prob = [True, False, False, False, False]
-        np.testing.assert_equal(cor_prob, cut)
-
-        est = estimators.KineticEstimator(cutoff = 0.2)
-        cut = est.predict(match_array)
-
-        cor_prob = [True, False, True, True, True]
-        np.testing.assert_equal(cor_prob, cut)
+    estimator = estimators.KineticEstimator()
+    pipeline = estimators.KineticEstimator.build_pipeline()
 
     def test_requires_pam(self):
 
@@ -403,17 +332,22 @@ class TestKineticEstimator(object):
         np.testing.assert_equal(cor_prob, cut)
 
 
+class TestCFDEstimator(BaseChecker):
 
+    hits = ['A' * 20 + 'AGG',
+                'A'*19 + 'T' + 'CGG',
+                'T' + 'A' * 19 + 'GGG',
+                'TT' + 'A'*18 + 'GGG',
+                'A'*5 + 'TT' + 'A'*13 + 'GGG',
+                'A' * 20 + 'GAG']
+    expected = [True, False, True, False, False, False]
+    prob = [1.0, 0.6, 1.0, 0.727, 0.714*0.4375, 0.259]
 
-class TestCFDEstimator(object):
+    estimator = estimators.CFDEstimator()
+    pipeline = estimators.CFDEstimator.build_pipeline()
 
-    def test_raises_value_error_on_wrong_size(self):
-
-        mod = estimators.CFDEstimator()
-        check = np.ones((5, 20))
-
-        with pytest.raises(ValueError):
-            mod.predict(check)
+    def _make_match_array(self, grna, hits):
+        return make_onehot_array_from_seqs(grna, hits)
 
     def test_loading(self):
 
@@ -422,67 +356,6 @@ class TestCFDEstimator(object):
         np.testing.assert_approx_equal(mod.score_vector.sum(), 217.9692)
 
 
-    def test_basic_score(self):
-        grna = 'A' * 20
-        hits = ['A' * 20 + 'AGG',
-                'A'*19 + 'T' + 'CGG',
-                'T' + 'A' * 19 + 'GGG',
-                'TT' + 'A'*18 + 'GGG',
-                'A'*5 + 'TT' + 'A'*13 + 'GGG',
-                'A' * 20 + 'GAG',
-                ]
-
-        hot_array = make_onehot_array_from_seqs(grna, hits)
-        cor_prob = [1.0, 0.6, 1.0, 0.727, 0.714*0.4375, 0.259]
-
-        mod = estimators.CFDEstimator()
-        cfd_score = mod.predict_proba(hot_array)
-
-        np.testing.assert_almost_equal(cor_prob, cfd_score, decimal=3)
-
-
-    def test_cutoff_score(self):
-
-        grna = 'A' * 20
-        hits = ['A' * 20 + 'AGG',
-                'A'*19 + 'T' + 'CGG',
-                'T' + 'A' * 19 + 'GGG',
-                'TT' + 'A'*18 + 'GGG',
-                'A'*5 + 'TT' + 'A'*13 + 'GGG',
-                'A' * 20 + 'GAG',
-                ]
-
-        hot_array = make_onehot_array_from_seqs(grna, hits)
-        cor_prob = np.array([1.0, 0.6, 1.0, 0.727, 0.714*0.4375, 0.259])
-
-        mod = estimators.CFDEstimator()
-        cfd_score = mod.predict(hot_array)
-
-        np.testing.assert_equal(cor_prob>0.75, cfd_score)
-
-        mod = estimators.CFDEstimator(cutoff = 0.5)
-        cfd_score = mod.predict(hot_array)
-        np.testing.assert_equal(cor_prob>0.5, cfd_score)
-
-
-    def test_build_pipeline(self):
-
-        grna = 'A' * 20
-        hits = ['A' * 20 + 'AGG',
-                'A'*19 + 'T' + 'CGG',
-                'T' + 'A' * 19 + 'GGG',
-                'TT' + 'A'*18 + 'GGG',
-                'A'*5 + 'TT' + 'A'*13 + 'GGG',
-                'A' * 20 + 'GAG',
-                ]
-
-        seq_array = np.array([(grna, hit) for hit in hits])
-        cor_prob = np.array([1.0, 0.6, 1.0, 0.727, 0.714*0.4375, 0.259])
-
-        mod = estimators.CFDEstimator.build_pipeline()
-        cfd_score = mod.predict_proba(seq_array)
-
-        np.testing.assert_almost_equal(cor_prob, cfd_score, decimal=3)
 
 
 

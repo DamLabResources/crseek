@@ -345,7 +345,6 @@ class KineticEstimator(BaseEstimator):
 
         return self.predict_proba(X) >= self.cutoff
 
-
     def predict_proba(self, X):
 
         if X.shape[1] != 21:
