@@ -8,3 +8,4 @@ seaborn
 scipy
 scikit-learn
 pysam
+pyyaml

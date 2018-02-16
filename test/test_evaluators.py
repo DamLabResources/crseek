@@ -288,7 +288,7 @@ class TestPositionalAgg(object):
     def test_positional_aggregation(self):
 
         seqdf, grnadf, cordf = self.make_complicated_dfs()
-        est = estimators.MismatchEstimator.build_pipeline(miss_non_seed=0)
+        est = estimators.MismatchEstimator.build_pipeline(miss_tail=0)
 
         results = evaluators.positional_aggregation(seqdf, grnadf, est, overlap=-1)
         merged = pd.merge(results, cordf, on = ['Num', 'gRNA'], how = 'outer')
