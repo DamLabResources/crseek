@@ -83,14 +83,14 @@
  
  1. Load in plasmid sequences
  2. Extract best hit from each sequence
- 3. Evaluate effectivness
+ 3. Evaluate effectivness using multiple estimators
  4. Compare predicted vs observed in IVT-cutting assay
  
  - Code Snippet using API
  - Summary Figure
  
 ## Task 4
- Training new predictor using CIRCLE-Seq data
+ Training new predictor using GUIDE-Seq data
  
  1. Load in CS data
  2. Normalize counts using a rank scale

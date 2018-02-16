@@ -7,7 +7,6 @@
  - Setup readthedocs links
  - Setup tox testing
  - Setup travis integration
- - Finish yaml serialization of cas9 variants
  - Write documentation around common tasks
  - Cas9-offinder must be in bioconda!
  - Setup things for code-snippets are part of the test suite 
