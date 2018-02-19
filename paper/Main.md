@@ -83,7 +83,7 @@
  
  1. Load in plasmid sequences
  2. Extract best hit from each sequence
- 3. Evaluate effectivness using multiple estimators
+ 3. Evaluate effectiveness using multiple estimators
  4. Compare predicted vs observed in IVT-cutting assay
  
  - Code Snippet using API

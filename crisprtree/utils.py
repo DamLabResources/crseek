@@ -160,7 +160,7 @@ def cas_offinder(gRNAs, mismatches, seqs = None, direc = None,
                                 'Seq': row[3].upper(),
                                 'Strand': 1 if row[4] == '+' else -1})
 
-    return pd.DataFrame(out_res).groupby(['Name', 'Strand', 'Left'])[['gRNA', 'Seq']].first()
+        return pd.DataFrame(out_res).groupby(['Name', 'Strand', 'Left'])[['gRNA', 'Seq']].first()
 
 
 def overlap_regions(hits, bed_path):
