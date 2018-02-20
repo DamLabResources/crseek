@@ -1,5 +1,8 @@
 from sklearn.base import BaseEstimator
 import numpy as np
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
+from crisprtree import utils
 
 
 class MatchingTransformer(BaseEstimator):
@@ -94,6 +97,52 @@ class OneHotTransformer(BaseEstimator):
             encoded.append(one_hot_encode_row(X[row, 0].upper(), X[row, 1].upper()))
 
         return np.array(encoded)
+
+
+def locate_hits_in_array(X, estimator, mismatches=6):
+    """ Utilizes cas-offinder to find the likeliest hit of the gRNA in a long
+    sequence. It uses the provided estimator to rank each potential hit.
+
+    Parameters
+    ----------
+    X : np.array
+        This should be an Nx2 array in which the first column is the gRNA
+        and the second column is the target sequence which is potentially > 23 bp.
+
+    estimator : SequenceBase
+        Estimator to use when scoring potential hits
+
+    mismatches : int
+        Number of mismatches to allow when performing cas-offinder search
+
+    Returns
+    -------
+
+    X : np.array
+        An Nx2 array in which the first column is the gRNA and the second
+        column is the target sequence (+PAM). Suitable for use with other tools.
+    loc : np.array
+        The position in each array of the maximal target hit. An Nx2 array in
+        which the first column is the start and the second is the strand.
+
+    """
+
+    def pick_best(df):
+        best = df['Score'].idxmin()
+        return df.loc[best, :]
+
+    seqs = (SeqRecord(Seq(s), id = str(num), description='') for num, s in enumerate(X[:,1]))
+    grnas = np.unique(X[:, 0])
+    result = utils.cas_offinder(grnas, mismatches, seqs = seqs)
+    result['Score'] = estimator.predict_proba(result.values)
+
+    best_hits = result.reset_index().groupby('Name').agg(pick_best)
+    best_hits = best_hits.reindex(str(x) for x in range(X.shape[0]))
+
+    X = best_hits[['gRNA', 'Seq']]
+    loc = best_hits[['Left', 'Strand']]
+
+    return X.values, loc.values
 
 
 def check_proto_target_input(X):
