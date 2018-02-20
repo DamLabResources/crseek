@@ -10,6 +10,7 @@ import os
 import pytest
 import csv
 from unittest.mock import patch
+import numpy as np
 
 
 class TestExtract(object):
@@ -81,15 +82,33 @@ def _missing_casoffinder():
     return len(out.strip()) == 0
 
 
+def make_random_seq_restrict(bp):
+    """ Utility function for making random sequence
+    Parameters
+    ----------
+    bp : int
+        Length of sequence
+
+    Returns
+    -------
+    str
+
+    """
+    return ''.join(np.random.choice(list('AT'), size = bp))
+
+
+
 @pytest.mark.skipif(_missing_casoffinder(), reason="Need CasOff installed")
 class TestCasOff(object):
 
     def make_basic(self, pam = 'CGG'):
-        seqs = ['A'*50 + 'T'*20 + pam + 'A'*50,           # hit
-                'A'*50 + 'T'*19 + 'A' + pam + 'A'*50,     # hit
-                'A'*50 + 'T'*18 + 'AA' + pam + 'A'*50,    # hit
-                'A'*50 + 'T'*17 + 'AAA' + pam + 'A'*50,   # hit
-                'A'*50 + 'T'*14 + 'A'*6 + pam + 'A'*50,   # no hit
+
+        np.random.seed(0)
+        seqs = [make_random_seq_restrict(50) + 'T'*20 + pam + make_random_seq_restrict(50),           # hit
+                make_random_seq_restrict(50) + 'T'*19 + 'A' + pam + make_random_seq_restrict(50),     # hit
+                make_random_seq_restrict(50) + 'T'*18 + 'AA' + pam + make_random_seq_restrict(50),    # hit
+                make_random_seq_restrict(50) + 'T'*17 + 'AAA' + pam + make_random_seq_restrict(50),   # hit
+                make_random_seq_restrict(50) + 'T'*14 + 'A'*6 + pam + make_random_seq_restrict(50),   # no hit
                 ]
         seq_recs = [SeqRecord(Seq(s), id='Num-%i' % i, description='') for i, s in enumerate(seqs)]
         gRNA = 'T'*20
@@ -110,15 +129,23 @@ class TestCasOff(object):
     def test_basic_seqs(self):
 
         gRNA, seq_recs, cor = self.make_basic()
-        res = utils.cas_offinder([gRNA], 5, seqs=seq_recs)
+        res = utils.cas_offinder([gRNA], 3, seqs=seq_recs)
         assert_frame_equal(res, cor)
 
-    def test_change_pam(self):
+    def test_change_pam_long(self):
 
         NmCas9_pam = 'NNNNGATT'
-
         gRNA, seq_recs, cor = self.make_basic(pam = 'CGCGGATT')
-        res = utils.cas_offinder([gRNA], 5, seqs=seq_recs, pam=NmCas9_pam)
+        res = utils.cas_offinder([gRNA], 3, seqs=seq_recs, pam=NmCas9_pam)
+        assert_frame_equal(res, cor)
+
+    def test_change_pam_short(self):
+
+        FnCas9_pam = 'NG'
+        gRNA, seq_recs, cor = self.make_basic(pam = 'CG')
+        print(cor)
+        res = utils.cas_offinder([gRNA], 3, seqs=seq_recs, pam=FnCas9_pam)
+        print(res)
         assert_frame_equal(res, cor)
 
     @patch('subprocess.check_call')
@@ -127,7 +154,7 @@ class TestCasOff(object):
 
         with pytest.raises(AssertionError):
             gRNA, seq_recs, cor = self.make_basic()
-            res = utils.cas_offinder([gRNA], 5, seqs=seq_recs)
+            res = utils.cas_offinder([gRNA], 3, seqs=seq_recs)
 
     def test_basic_path(self):
 
@@ -151,7 +178,7 @@ class TestCasOff(object):
             with open(os.path.join(tmpdir, 'seqs.fasta'), 'w') as handle:
                 SeqIO.write(seq_recs[1:], handle, 'fasta')
 
-            res = utils.cas_offinder([gRNA], 5, direc=tmpdir, seqs=[seq_recs[0]])
+            res = utils.cas_offinder([gRNA], 3, direc=tmpdir, seqs=[seq_recs[0]])
             assert_frame_equal(res, cor)
 
 

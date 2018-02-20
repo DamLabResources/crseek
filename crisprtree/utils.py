@@ -140,7 +140,8 @@ def cas_offinder(gRNAs, mismatches, seqs = None, direc = None,
             handle.write(direc + '\n')
             handle.write('NNNNNNNNNNNNNNNNNNNN'+pam + '\n')
             for grna in gRNAs:
-                handle.write('%sNNN %i\n' % (grna, mismatches))
+                # Not sure why, must be NNN no matter what the PAM length is
+                handle.write('%s%s %i\n' % (grna, 'N'*3, mismatches))
 
         tdict = {'ifile': input_path,
                  'ofile': out_path,
