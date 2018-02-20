@@ -5,7 +5,8 @@ import pandas as pd
 import numpy as np
 import shlex
 from io import StringIO, BytesIO
-from subprocess import check_call, STDOUT, check_output,CalledProcessError
+import subprocess
+from subprocess import STDOUT, CalledProcessError
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from Bio.SeqUtils import nt_search
 from Bio.Seq import reverse_complement
@@ -146,7 +147,7 @@ def cas_offinder(gRNAs, mismatches, seqs = None, direc = None,
         FNULL = open(os.devnull, 'w')
         call_args = shlex.split(cmd % tdict)
         try:
-            check_call(call_args, stdout=FNULL, stderr=STDOUT)
+            subprocess.check_call(call_args, stdout=FNULL, stderr=STDOUT)
         except FileNotFoundError:
             raise AssertionError('cas-offinder not installed on the path')
 
@@ -201,7 +202,7 @@ def overlap_regions(hits, bed_path):
         tdict = {'genes': bed_path, 'hit': handle.name}
         cmd = 'bedtools intersect -a %(hit)s -b %(genes)s -loj -u'
         call_args = shlex.split(cmd % tdict)
-        out = check_output(call_args)
+        out = subprocess.check_output(call_args)
         cols = ['Name', 'Left', 'Right', '_', '_', 'Strand']
         df = pd.read_csv(BytesIO(out), sep='\t',
                          header = None,

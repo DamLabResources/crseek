@@ -5,7 +5,7 @@ import pandas as pd
 from pandas.util.testing import assert_series_equal, assert_frame_equal
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from Bio import SeqIO
-from subprocess import CalledProcessError
+from subprocess import CalledProcessError, check_output
 import os
 import pytest
 import csv
@@ -74,6 +74,12 @@ class TestTiling(object):
                 assert row['Seq'] == reverse_complement(bseq[start:start+23])
 
 
+def _missing_casoffinder():
+    """ Returns True if cas-offinder is not on the path"""
+
+    out = check_output(['which', 'cas-offinder'])
+    return len(out.strip()) == 0
+
 class TestCasOff(object):
 
     def make_basic(self):
@@ -99,14 +105,14 @@ class TestCasOff(object):
 
         return gRNA, seq_recs, cor
 
-    @pytest.mark.skip(reason="Need CasOff installed")
+    @pytest.mark.skipif(_missing_casoffinder(), reason="Need CasOff installed")
     def test_basic_seqs(self):
 
         gRNA, seq_recs, cor = self.make_basic()
         res = utils.cas_offinder([gRNA], 5, seqs=seq_recs)
         assert_frame_equal(res, cor)
 
-    @pytest.mark.skip(reason="Need CasOff installed")
+    @pytest.mark.skipif(_missing_casoffinder(), reason="Need CasOff installed")
     @patch('subprocess.check_call')
     def test_fails_gracefully(self, mock):
         mock.side_effect = FileNotFoundError
@@ -115,7 +121,7 @@ class TestCasOff(object):
             gRNA, seq_recs, cor = self.make_basic()
             res = utils.cas_offinder([gRNA], 5, seqs=seq_recs)
 
-    @pytest.mark.skip(reason="Need CasOff installed")
+    @pytest.mark.skipif(_missing_casoffinder(), reason="Need CasOff installed")
     def test_basic_path(self):
 
         gRNA, seq_recs, cor = self.make_basic()
@@ -126,13 +132,13 @@ class TestCasOff(object):
             res = utils.cas_offinder([gRNA], 5, direc=tmpdir)
             assert_frame_equal(res, cor)
 
-    @pytest.mark.skip(reason="Need CasOff installed")
+    @pytest.mark.skipif(_missing_casoffinder(), reason="Need CasOff installed")
     def test_missing_both(self):
 
         with pytest.raises(AssertionError):
             utils.cas_offinder(['T'*20], 5)
 
-    @pytest.mark.skip(reason="Need CasOff installed")
+    @pytest.mark.skipif(_missing_casoffinder(), reason="Need CasOff installed")
     def test_provide_both(self):
 
         gRNA, seq_recs, cor = self.make_basic()
