@@ -2,12 +2,26 @@
 Installation
 ============
 
-At the command line either via easy_install or pip::
+Basic Installation
+-----------------
 
-    $ easy_install crisprtree
-    $ pip install crisprtree
+    $ conda config --add channels conda-forge
+    $ conda config --add channels bioconda
+    $ conda install crisprtree
 
-Or, if you have virtualenvwrapper installed::
+Due to the nature of the `cas-offinder`, in order to use a GPU for mismatch searching the openci library must be
+installed by hand. Instructions can be found by searching for your particular graphics card.
 
-    $ mkvirtualenv crisprtree
-    $ pip install crisprtree
+Installing Dependencies Independently
+-------------------------------------
+
+Both `conda` and `pip` are needed to install all dependencies.
+
+    $ conda create -n crisprtree python=3.6
+    $ source activate crisprtree
+    $ conda config --add channels conda-forge
+    $ conda config --add channels defaults
+    $ conda config --add channels r
+    $ conda config --add channels bioconda
+    $ conda install --file requirements.conda
+    $ pip install -r requirement.txt
