@@ -89,7 +89,8 @@ def tile_seqrecord(grna, seq_record):
 
 
 def cas_offinder(gRNAs, mismatches, seqs = None, direc = None,
-                      openci_devices = 'G0', keeptmp = False):
+                 pam = 'NRG', openci_devices = 'G0',
+                 keeptmp = False):
     """ Call the cas-offinder tool and return the relevant info
     Parameters
     ----------
@@ -101,6 +102,8 @@ def cas_offinder(gRNAs, mismatches, seqs = None, direc = None,
         SeqRecords to search.
     direc : str
         Path to a directory containing fasta-files to search
+    pam : str
+        PAM to use when searching
     openci_devices : str
         Formatted string of device-IDs acceptable to cas-offinder
     keeptmp : bool
@@ -135,7 +138,7 @@ def cas_offinder(gRNAs, mismatches, seqs = None, direc = None,
 
         with open(input_path, 'w') as handle:
             handle.write(direc + '\n')
-            handle.write('NNNNNNNNNNNNNNNNNNNNNRG' + '\n')
+            handle.write('NNNNNNNNNNNNNNNNNNNN'+pam + '\n')
             for grna in gRNAs:
                 handle.write('%sNNN %i\n' % (grna, mismatches))
 

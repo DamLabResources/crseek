@@ -80,14 +80,16 @@ def _missing_casoffinder():
     out = check_output(['which', 'cas-offinder'])
     return len(out.strip()) == 0
 
+
+@pytest.mark.skipif(_missing_casoffinder(), reason="Need CasOff installed")
 class TestCasOff(object):
 
-    def make_basic(self):
-        seqs = ['A'*50 + 'T'*20 + 'CGG' + 'A'*50,           # hit
-                'A'*50 + 'T'*19 + 'A' + 'CGG' + 'A'*50,     # hit
-                'A'*50 + 'T'*18 + 'AA' + 'CGG' + 'A'*50,    # hit
-                'A'*50 + 'T'*17 + 'AAA' + 'CGG' + 'A'*50,   # hit
-                'A'*50 + 'T'*14 + 'A'*6 + 'CGG' + 'A'*50,   # no hit
+    def make_basic(self, pam = 'CGG'):
+        seqs = ['A'*50 + 'T'*20 + pam + 'A'*50,           # hit
+                'A'*50 + 'T'*19 + 'A' + pam + 'A'*50,     # hit
+                'A'*50 + 'T'*18 + 'AA' + pam + 'A'*50,    # hit
+                'A'*50 + 'T'*17 + 'AAA' + pam + 'A'*50,   # hit
+                'A'*50 + 'T'*14 + 'A'*6 + pam + 'A'*50,   # no hit
                 ]
         seq_recs = [SeqRecord(Seq(s), id='Num-%i' % i, description='') for i, s in enumerate(seqs)]
         gRNA = 'T'*20
@@ -97,22 +99,28 @@ class TestCasOff(object):
                                                ('Num-2', 1, 50),
                                                ('Num-3', 1, 50),],
                                               names = ['Name', 'Strand', 'Left'])
-        cor = pd.DataFrame([{'gRNA': gRNA, 'Seq': 'T'*20 + 'CGG'},
-                            {'gRNA': gRNA, 'Seq': 'T'*19 + 'A' + 'CGG'},
-                            {'gRNA': gRNA, 'Seq': 'T'*18 + 'AA' + 'CGG'},
-                            {'gRNA': gRNA, 'Seq': 'T'*17 + 'AAA'+ 'CGG'},],
+        cor = pd.DataFrame([{'gRNA': gRNA, 'Seq': 'T'*20 + pam},
+                            {'gRNA': gRNA, 'Seq': 'T'*19 + 'A' + pam},
+                            {'gRNA': gRNA, 'Seq': 'T'*18 + 'AA' + pam},
+                            {'gRNA': gRNA, 'Seq': 'T'*17 + 'AAA'+pam},],
                            index = cor_index)[['gRNA', 'Seq']]
 
         return gRNA, seq_recs, cor
 
-    @pytest.mark.skipif(_missing_casoffinder(), reason="Need CasOff installed")
     def test_basic_seqs(self):
 
         gRNA, seq_recs, cor = self.make_basic()
         res = utils.cas_offinder([gRNA], 5, seqs=seq_recs)
         assert_frame_equal(res, cor)
 
-    @pytest.mark.skipif(_missing_casoffinder(), reason="Need CasOff installed")
+    def test_change_pam(self):
+
+        NmCas9_pam = 'NNNNGATT'
+
+        gRNA, seq_recs, cor = self.make_basic(pam = 'CGCGGATT')
+        res = utils.cas_offinder([gRNA], 5, seqs=seq_recs, pam=NmCas9_pam)
+        assert_frame_equal(res, cor)
+
     @patch('subprocess.check_call')
     def test_fails_gracefully(self, mock):
         mock.side_effect = FileNotFoundError
@@ -121,7 +129,6 @@ class TestCasOff(object):
             gRNA, seq_recs, cor = self.make_basic()
             res = utils.cas_offinder([gRNA], 5, seqs=seq_recs)
 
-    @pytest.mark.skipif(_missing_casoffinder(), reason="Need CasOff installed")
     def test_basic_path(self):
 
         gRNA, seq_recs, cor = self.make_basic()
@@ -132,13 +139,11 @@ class TestCasOff(object):
             res = utils.cas_offinder([gRNA], 5, direc=tmpdir)
             assert_frame_equal(res, cor)
 
-    @pytest.mark.skipif(_missing_casoffinder(), reason="Need CasOff installed")
     def test_missing_both(self):
 
         with pytest.raises(AssertionError):
             utils.cas_offinder(['T'*20], 5)
 
-    @pytest.mark.skipif(_missing_casoffinder(), reason="Need CasOff installed")
     def test_provide_both(self):
 
         gRNA, seq_recs, cor = self.make_basic()
