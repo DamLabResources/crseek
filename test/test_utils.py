@@ -132,6 +132,19 @@ class TestCasOff(object):
         res = utils.cas_offinder([gRNA], 3, seqs=seq_recs)
         assert_frame_equal(res, cor)
 
+    def test_no_hits(self):
+
+        _, seq_recs, cor = self.make_basic()
+
+        np.random.seed(20)
+        gRNA = ''.join(np.random.choice(list('ATCG'), size = 20))
+
+        res = utils.cas_offinder([gRNA], 0, seqs=seq_recs)
+        assert len(res.index) == 0
+        assert res.index.names == ['Name', 'Strand', 'Left']
+        np.testing.assert_array_equal(res.columns,
+                                      ['gRNA', 'Seq'])
+
     def test_change_pam_long(self):
 
         NmCas9_pam = 'NNNNGATT'
