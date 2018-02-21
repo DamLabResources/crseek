@@ -2,6 +2,7 @@ from sklearn.base import BaseEstimator
 import numpy as np
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
+from Bio.Alphabet import generic_dna, generic_rna
 from crisprtree import utils
 
 
@@ -106,8 +107,8 @@ def locate_hits_in_array(X, estimator, mismatches=6):
     Parameters
     ----------
     X : np.array
-        This should be an Nx2 array in which the first column is the gRNA
-        and the second column is the target sequence which is potentially > 23 bp.
+        This should be an Nx2 array in which the first column is the spacer
+        and the second column is the locus.
 
     estimator : SequenceBase
         Estimator to use when scoring potential hits
@@ -131,13 +132,14 @@ def locate_hits_in_array(X, estimator, mismatches=6):
         best = df['Score'].idxmin()
         return df.loc[best, :]
 
-    seqs = (SeqRecord(Seq(s), id = str(num), description='') for num, s in enumerate(X[:,1]))
+    seqs = list(X[:,1])
+    seq_ids = [s.id for s in X[:,1]]
     grnas = np.unique(X[:, 0])
     result = utils.cas_offinder(grnas, mismatches, seqs = seqs)
     result['Score'] = estimator.predict_proba(result.values)
 
     best_hits = result.reset_index().groupby('Name').agg(pick_best)
-    best_hits = best_hits.reindex(str(x) for x in range(X.shape[0]))
+    best_hits = best_hits.reindex(seq_ids)
 
     X = best_hits[['gRNA', 'Seq']]
     loc = best_hits[['Left', 'Strand']]
@@ -150,8 +152,8 @@ def check_proto_target_input(X):
     Parameters
     ----------
     X : np.array
-        This should be an Nx2 vector in which the first column is the gRNA
-        and the second column is the target sequence (+PAM).
+        This should be an Nx2 vector in which the first column is the spacer
+        and the second column is the target.
 
     Returns
     -------
@@ -161,22 +163,27 @@ def check_proto_target_input(X):
 
     assert X.shape[1] == 2
 
-    gRNA_lens = np.array([len(val) for val in X[:,0]])
-    hit_lens = np.array([len(val) for val in X[:,1]])
+    spacer_lens = np.array([len(val) for val in X[:,0]])
+    target_lens = np.array([len(val) for val in X[:,1]])
 
-    assert np.all(gRNA_lens == 20)
-    assert np.all(hit_lens == 23)
+    assert np.all(spacer_lens == 20)
+    assert np.all(target_lens == 23)
+
+    if any(spacer.alphabet != generic_rna for spacer in X[:, 0]):
+        raise ValueError('All spacers must have RNA alphabets')
+    if any(target.alphabet != generic_dna for target in X[:, 1]):
+        raise ValueError('All targets must have DNA alphabets')
 
     return True
 
 
-def match_encode_row(gRNA, target):
+def match_encode_row(spacer, target):
     """ Does the actual match-based encoding.
 
     Parameters
     ----------
-    gRNA : str
-    target : str
+    spacer : Seq
+    target : Seq
 
     Returns
     -------
@@ -184,22 +191,21 @@ def match_encode_row(gRNA, target):
 
     """
 
-    seq_order = 'ACGT'
+    # TODO: Deal with different PAMs
 
-    features = [g == l for g, l in zip(gRNA, target)]
+    features = [g == l for g, l in zip(str(spacer).replace('U', 'T'), target)]
     features.append(target[-2:] == 'GG')
 
     return np.array(features)
 
 
-
-def one_hot_encode_row(gRNA, target):
+def one_hot_encode_row(spacer, target):
     """ Does the actual one-hot encoding using a set of nested for-loops.
 
     Parameters
     ----------
-    gRNA : str
-    target : str
+    spacer : Seq
+    target : Seq
 
     Returns
     -------
@@ -210,9 +216,9 @@ def one_hot_encode_row(gRNA, target):
     seq_order = 'ACGT'
     features = []
     for pos in range(20):
-        for g in seq_order:
-            for t in seq_order:
-                features.append((gRNA[pos] == g) and (target[pos] == t))
+        for g in 'ACGU':
+            for t in 'ACGT':
+                features.append((spacer[pos] == g) and (target[pos] == t))
 
     for m22 in seq_order:
         for m23 in seq_order:

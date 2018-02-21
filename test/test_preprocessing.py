@@ -3,6 +3,9 @@ import pytest
 import numpy as np
 import pandas as pd
 from itertools import product
+from Bio.Seq import Seq
+from Bio.Alphabet import generic_dna, generic_rna
+from Bio.SeqRecord import SeqRecord
 
 from crisprtree.preprocessing import one_hot_encode_row, check_proto_target_input, match_encode_row, locate_hits_in_array
 from crisprtree.estimators import CFDEstimator
@@ -12,21 +15,31 @@ class TestBasicInputs(object):
 
     def test_simple_inputs(self):
 
-        gRNA = 'A'*20
-        hit = 'A'*20 + 'AGG'
+        spacer = Seq('A'*20, alphabet = generic_rna)
+        target = Seq('A'*20 + 'AGG', alphabet = generic_dna)
 
-        inp = np.array([[gRNA, hit],
-                         [gRNA, hit]])
+        inp = np.array([[spacer, target],
+                         [spacer, target]])
 
         assert check_proto_target_input(inp)
 
+    def test_str_inputs(self):
+
+        spacer = 'A'*20
+        target = 'A'*20 + 'AGG'
+
+        inp = np.array([[spacer, target],
+                         [spacer, target]])
+
+        with pytest.raises(ValueError):
+            check_proto_target_input(inp)
+
     def test_missing_col(self):
 
-        gRNA = 'A'*20
-        hit = 'A'*20 + 'AGG'
+        spacer = Seq('A'*20, alphabet = generic_rna)
 
-        inp = np.array([[gRNA],
-                         [gRNA]])
+        inp = np.array([[spacer],
+                         [spacer]])
 
         checks = [check_proto_target_input,
                   preprocessing.MatchingTransformer().transform,
@@ -39,11 +52,11 @@ class TestBasicInputs(object):
 
     def test_missing_PAM(self):
 
-        gRNA = 'A'*20
-        hit = 'A'*20
+        spacer = Seq('A'*20, alphabet = generic_rna)
+        target = Seq('A'*20, alphabet = generic_dna)
 
-        inp = np.array([[gRNA, hit],
-                         [gRNA, hit]])
+        inp = np.array([[spacer, target],
+                         [spacer, target]])
 
         checks = [check_proto_target_input,
                   preprocessing.MatchingTransformer().transform,
@@ -59,23 +72,23 @@ class TestOneHotEncoding(object):
 
     def test_encoding(self):
 
-        gRNA = 'A'*20
-        hit = 'A'*20 + 'AGG'
+        spacer = Seq('A'*20, alphabet = generic_rna)
+        target = Seq('A'*20 + 'AGG', alphabet = generic_dna)
 
         cor = np.zeros(21*16)
         locs = np.arange(0, 20*16, 16)
         cor[locs] = True
         cor[-6] = True # GG
 
-        res = one_hot_encode_row(gRNA, hit)
+        res = one_hot_encode_row(spacer, target)
         assert res.shape == (21*16, )
 
         np.testing.assert_array_equal(cor.astype(bool), res)
 
     def test_more_encoding(self):
 
-        gRNA = 'T' + 'A'*19
-        hit = 'A'*20 + 'AGG'
+        spacer = Seq('U' + 'A'*19, alphabet = generic_rna)
+        target = Seq('A'*20 + 'AGG', alphabet = generic_dna)
 
         cor = np.zeros(21*16)
         locs = np.arange(0, 20*16, 16)
@@ -84,7 +97,7 @@ class TestOneHotEncoding(object):
         cor[12] = True
         cor[-6] = True # GG
 
-        res = one_hot_encode_row(gRNA, hit)
+        res = one_hot_encode_row(spacer, target)
 
         assert res.shape == (21*16, )
 
@@ -92,7 +105,7 @@ class TestOneHotEncoding(object):
 
     def test_PAM_encoding(self):
 
-        gRNA = 'T' + 'A'*19
+        spacer = Seq('U' + 'A'*19, alphabet = generic_rna)
 
         locs = np.arange(0, 20*16, 16)
 
@@ -103,16 +116,16 @@ class TestOneHotEncoding(object):
             cor[0] = False
             cor[12] = True
             cor[20*16+pos] = True # PAM
-            hit = 'A'*20 + 'A' + p1 + p2
+            target = Seq('A'*20 + 'A' + p1 + p2, alphabet = generic_dna)
 
-            res = one_hot_encode_row(gRNA, hit)
+            res = one_hot_encode_row(spacer, target)
 
             np.testing.assert_array_equal(cor.astype(bool), res)
 
     def test_transforming(self):
 
-        gRNA = 'T' + 'A'*19
-        hit = 'A'*20 + 'AGG'
+        spacer = Seq('U' + 'A'*19, alphabet = generic_rna)
+        target = Seq('A'*20 + 'AGG', alphabet = generic_dna)
 
         cor = np.zeros(21*16)
         locs = np.arange(0, 20*16, 16)
@@ -121,9 +134,10 @@ class TestOneHotEncoding(object):
         cor[12] = True
         cor[-6] = True # GG
 
-        inp = np.array([[gRNA, hit],
-                        [gRNA, hit],
-                        [gRNA, hit]])
+        inp = np.array([[spacer, target],
+                        [spacer, target],
+                        [spacer, target]])
+        print(inp.shape)
         hot_encoder = preprocessing.OneHotTransformer()
         res = hot_encoder.transform(inp)
 
@@ -134,34 +148,34 @@ class TestOneHotEncoding(object):
 
     def test_bad_target(self):
 
-        gRNA = 'A'*20
-        hit = 'N' + 'A'*19 + 'AGG'
+        spacer = Seq('A'*20, alphabet=generic_rna)
+        target = Seq('N' + 'A'*19 + 'AGG', alphabet = generic_dna)
 
         with pytest.raises(AssertionError):
-            preprocessing.one_hot_encode_row(gRNA, hit)
+            preprocessing.one_hot_encode_row(spacer, target)
 
 
 class TestMatchingEncoding(object):
 
     def test_encoding(self):
 
-        gRNA = 'A'*20
-        hit = 'A'*20 + 'AGG'
+        spacer = Seq('A'*20, alphabet = generic_rna)
+        target = Seq('A'*20 + 'AGG', alphabet = generic_dna)
         cor = np.array([True]*21)
 
-        res = match_encode_row(gRNA, hit)
+        res = match_encode_row(spacer, target)
         assert res.shape == (20+1, )
 
         np.testing.assert_array_equal(cor.astype(bool), res)
 
     def test_more_encoding(self):
 
-        gRNA = 'T' + 'A'*19
-        hit = 'A'*20 + 'AGG'
+        spacer = Seq('U' + 'A'*19, alphabet = generic_rna)
+        target = Seq('A'*20 + 'AGG', alphabet = generic_dna)
 
         cor = np.array([False] + [True]*20)
 
-        res = match_encode_row(gRNA, hit)
+        res = match_encode_row(spacer, target)
 
         assert res.shape == (20+1, )
 
@@ -169,14 +183,14 @@ class TestMatchingEncoding(object):
 
     def test_transforming(self):
 
-        gRNA = 'T' + 'A'*19
-        hit = 'A'*20 + 'AGG'
+        spacer = Seq('U' + 'A'*19, alphabet = generic_rna)
+        target = Seq('A'*20 + 'AGG', alphabet = generic_dna)
 
         cor = np.array([False] + [True]*20)
 
-        inp = np.array([[gRNA, hit],
-                        [gRNA, hit],
-                        [gRNA, hit]])
+        inp = np.array([[spacer, target],
+                        [spacer, target],
+                        [spacer, target]])
         hot_encoder = preprocessing.MatchingTransformer()
         res = hot_encoder.transform(inp)
 
@@ -208,17 +222,18 @@ class TestLocate(object):
         #prevent Heisenbugs
         np.random.seed(0)
 
-        seqs = [make_random_seq(50) + 'TTTT' + 'A'*20 + 'CGG' + 'TTTT' + make_random_seq(50),
+        locus = [make_random_seq(50) + 'TTTT' + 'A'*20 + 'CGG' + 'TTTT' + make_random_seq(50),
                 make_random_seq(12) + 'TTTT' + 'C'*19+'T' + 'CGG' + 'TTTT' + make_random_seq(50),
                 make_random_seq(75),
                 make_random_seq(25) + 'TTTT' + 'T' + 'A'*19 + 'TGG' + 'TTTT' + make_random_seq(50)]
+        locus = [SeqRecord(Seq(s, alphabet = generic_rna), id = str(n)) for n, s in enumerate(locus)]
 
-        grnas = ['A'*20,
-                 'C'*19+'T',
-                 'C'*19+'T',
-                 'A'*20]
+        spacers = [Seq('A'*20, alphabet = generic_rna),
+                   Seq('C'*19+'U', alphabet = generic_rna),
+                   Seq('C'*19+'U', alphabet = generic_rna),
+                   Seq('A'*20, alphabet = generic_rna)]
 
-        X = np.array(list(zip(grnas, seqs)))
+        X = np.array(list(zip(spacers, locus)))
         estimator = CFDEstimator.build_pipeline()
 
         nX, loc = locate_hits_in_array(X, estimator, mismatches=6)
@@ -229,9 +244,13 @@ class TestLocate(object):
         np.testing.assert_array_equal([54, 16, np.nan, 29], loc[:,0])
         np.testing.assert_array_equal([1, 1, np.nan, 1], loc[:,1])
 
-        cor_hit = ['A'*20 + 'CGG', 'C'*19+'T' + 'CGG', np.nan, 'T' + 'A'*19 + 'TGG']
-        cor_grnas = ['A'*20, 'C'*19+'T', np.nan, 'A'*20]
-        cX = pd.DataFrame(list(zip(cor_grnas, cor_hit))).values
+        cor_target = ['A'*20 + 'CGG', 'C'*19+'T' + 'CGG', np.nan, 'T' + 'A'*19 + 'TGG']
+        cor_target = [Seq(s, alphabet = generic_dna) for s in cor_target]
+
+        cor_spacer = ['A'*20, 'C'*19+'T', np.nan, 'A'*20]
+        cor_spacer = [Seq(s, alphabet = generic_rna) for s in cor_spacer]
+
+        cX = pd.DataFrame(list(zip(cor_spacer, cor_target))).values
 
         mask = np.array([True, True, False, True])
         np.testing.assert_array_equal(cX[mask, :], nX[mask, :])
