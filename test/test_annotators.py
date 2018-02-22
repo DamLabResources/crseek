@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 from pandas.util.testing import assert_series_equal
 import pytest
+from Bio import Alphabet
 
 from test.test_evaluators import build_estimator
 
@@ -18,13 +19,14 @@ class TestAnnotateSingle(object):
 
     def test_basic(self):
 
-        gRNA = 'A'*20
-        seqR = SeqRecord(Seq('T'*5 + 'A'*20 + 'CGG' + 'T'*40),
+        spacer = Seq('A'*20, alphabet = Alphabet.generic_rna)
+        seqR = SeqRecord(Seq('T'*5 + 'A'*20 + 'CGG' + 'T'*40,
+                             alphabet = Alphabet.generic_dna),
                          id = 'CheckSeq')
 
         mod = build_estimator()
 
-        seqR = annotators.annotate_grna_binding(gRNA, seqR, mod)
+        seqR = annotators.annotate_grna_binding(spacer, seqR, mod)
 
         assert len(seqR.features) == 1
         feat = seqR.features[0]
@@ -32,18 +34,19 @@ class TestAnnotateSingle(object):
         assert feat.location.start == 5
         assert feat.location.end == 28
         assert feat.location.strand == 1
-        assert feat.qualifiers.get('gRNA') == 'A'*20
+        assert feat.qualifiers.get('spacer') == 'A'*20
         assert feat.qualifiers.get('On Target Score') == 1
 
     def test_basic_exhaustive(self):
 
-        gRNA = 'A'*20
-        seqR = SeqRecord(Seq('T'*5 + 'A'*20 + 'CGG' + 'T'*40),
+        spacer = Seq('A'*20, alphabet = Alphabet.generic_rna)
+        seqR = SeqRecord(Seq('T'*5 + 'A'*20 + 'CGG' + 'T'*40,
+                             alphabet = Alphabet.generic_dna),
                          id = 'CheckSeq')
 
         mod = build_estimator()
 
-        seqR = annotators.annotate_grna_binding(gRNA, seqR, mod, exhaustive = True)
+        seqR = annotators.annotate_grna_binding(spacer, seqR, mod, exhaustive = True)
 
         assert len(seqR.features) == 1
         feat = seqR.features[0]
@@ -51,36 +54,37 @@ class TestAnnotateSingle(object):
         assert feat.location.start == 5
         assert feat.location.end == 28
         assert feat.location.strand == 1
-        assert feat.qualifiers.get('gRNA') == 'A'*20
+        assert feat.qualifiers.get('spacer') == 'A'*20
         assert feat.qualifiers.get('On Target Score') == 1
 
     def test_basic_extra_quals(self):
 
-        gRNA = 'A'*20
-        seqR = SeqRecord(Seq('T'*5 + 'A'*20 + 'CGG' + 'T'*40),
+        spacer = Seq('A'*20, alphabet = Alphabet.generic_rna)
+        seqR = SeqRecord(Seq('T'*5 + 'A'*20 + 'CGG' + 'T'*40,
+                             alphabet = Alphabet.generic_dna),
                          id = 'CheckSeq')
 
         mod = build_estimator()
 
-        seqR = annotators.annotate_grna_binding(gRNA, seqR, mod,
+        seqR = annotators.annotate_grna_binding(spacer, seqR, mod,
                                                 extra_qualifiers = {'Something': 'here'})
 
         assert len(seqR.features) == 1
         feat = seqR.features[0]
 
-        assert feat.qualifiers.get('gRNA') == 'A'*20
+        assert feat.qualifiers.get('spacer') == 'A'*20
         assert feat.qualifiers.get('On Target Score') == 1
         assert feat.qualifiers.get('Something') == 'here'
 
-
     def test_reverse(self):
 
-        gRNA = 'A'*20
-        seqR = SeqRecord(Seq('T'*5 + 'A'*20 + 'CGG' + 'T'*40).reverse_complement(),
+        spacer = Seq('A'*20, alphabet = Alphabet.generic_rna)
+        seqR = SeqRecord(Seq('T'*5 + 'A'*20 + 'CGG' + 'T'*40,
+                             alphabet = Alphabet.generic_dna).reverse_complement(),
                          id = 'CheckSeq')
         mod = build_estimator()
 
-        seqR = annotators.annotate_grna_binding(gRNA, seqR, mod)
+        seqR = annotators.annotate_grna_binding(spacer, seqR, mod)
 
         assert len(seqR.features) == 1
         feat = seqR.features[0]
@@ -88,9 +92,8 @@ class TestAnnotateSingle(object):
         assert feat.location.start == 40
         assert feat.location.end == 63
         assert feat.location.strand == -1
-        assert feat.qualifiers.get('gRNA') == 'A'*20
+        assert feat.qualifiers.get('spacer') == 'A'*20
         assert feat.qualifiers.get('On Target Score') == 1
-
 
 
 class TestSeqFeature(object):
@@ -103,7 +106,7 @@ class TestSeqFeature(object):
         assert feat.location.end == 35
         assert feat.location.strand == 1
 
-        assert feat.qualifiers.get('gRNA', None) == 'A'*20
+        assert feat.qualifiers.get('spacer', None) == 'A'*20
         assert feat.qualifiers.get('On Target Score', None) == 1
 
     def test_reverse_strand(self):
@@ -114,7 +117,7 @@ class TestSeqFeature(object):
         assert feat.location.end == 123
         assert feat.location.strand == -1
 
-        assert feat.qualifiers.get('gRNA', None) == 'A'*20
+        assert feat.qualifiers.get('spacer', None) == 'A'*20
         assert feat.qualifiers.get('On Target Score', None) == 1
 
     def test_value_error_on_bad_strand(self):

@@ -71,7 +71,6 @@ def tile_seqrecord(spacer, seq_record):
 
     """
 
-
     exceptions._check_seq_alphabet(spacer, RNAAlphabet)
     exceptions._check_seq_alphabet(seq_record.seq, DNAAlphabet)
 
@@ -82,7 +81,7 @@ def tile_seqrecord(spacer, seq_record):
                       'left': n,
                       'strand': 1,
                       'spacer': spacer,
-                      'target': str_seq[n:n+23]})
+                      'target': Seq(str_seq[n:n+23], alphabet = generic_dna)})
         tiles.append({'name': seq_record.id,
                       'left': n,
                       'strand': -1,

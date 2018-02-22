@@ -23,13 +23,13 @@ class SequenceBase(BaseEstimator, ClassifierMixin):
     def build_pipeline(**kwargs):
         raise NotImplementedError
 
-    def annotate_sequence(self, gRNA, seq, mismatch_tolerance = 4,
+    def annotate_sequence(self, spacer, seq, mismatch_tolerance = 4,
                           exhaustive = False, extra_qualifiers=None):
         """
         Parameters
         ----------
-        gRNA : Seq
-            gRNA to search
+        spacer : Seq
+            spacer to search
         seq : SeqRecord
             The sequence to query.
         exhaustive : bool
@@ -48,7 +48,7 @@ class SequenceBase(BaseEstimator, ClassifierMixin):
         """
         from crisprtree.annotators import annotate_grna_binding
 
-        return annotate_grna_binding(str(gRNA), seq, self,
+        return annotate_grna_binding(spacer, seq, self,
                                      exhaustive = exhaustive,
                                      mismatch_tolerance = mismatch_tolerance,
                                      extra_qualifiers = extra_qualifiers)

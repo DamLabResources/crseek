@@ -1,24 +1,26 @@
 from Bio.Seq import Seq, reverse_complement
 from Bio.SeqRecord import SeqRecord
 from Bio.SeqFeature import SeqFeature, FeatureLocation
+from Bio import Alphabet
 import numpy as np
 import pandas as pd
 
 from crisprtree.utils import tile_seqrecord, cas_offinder
 from crisprtree.estimators import SequenceBase
+from crisprtree import exceptions
 
 
-def annotate_grna_binding(grna, seq_record, estimator, extra_qualifiers=None,
+def annotate_grna_binding(spacer, seq_record, estimator, extra_qualifiers=None,
                           exhaustive = False, mismatch_tolerance = 6):
     """ In-place annotation of gRNA binding location.
     Parameters
     ----------
-    grna : str
-        gRNA to search for.
+    spacer : Seq
+        spacer to search for.
     seq_record : SeqRecord
         The sequence to search within
     estimator : SequenceBase or None
-        Estimator to use to evaluate gRNA binding. If None, exact string matching is used.
+        Estimator to use to evaluate spacer binding. If None, exact string matching is used.
     extra_qualifiers : dict
         Extra qualifiers to add to the SeqFeature
     exhaustive : bool
@@ -34,23 +36,26 @@ def annotate_grna_binding(grna, seq_record, estimator, extra_qualifiers=None,
 
     """
 
+    exceptions._check_seq_alphabet(spacer, base_alphabet = Alphabet.RNAAlphabet)
+    exceptions._check_seq_alphabet(seq_record.seq, base_alphabet = Alphabet.DNAAlphabet)
+
     if estimator is None:
-        pos = seq_record.seq.find(grna)
+        pos = seq_record.seq.find(spacer)
         strand = 1
         if pos == -1:
-            pos = seq_record.seq.find(reverse_complement(grna))
+            pos = seq_record.seq.find(reverse_complement(spacer))
             strand = -1
             if pos == -1:
                 raise ValueError('Could not find exact match on either strand')
 
-        seq_record.features.append(_build_target_feature(pos, strand, grna, score=1,
+        seq_record.features.append(_build_target_feature(pos, strand, spacer, score=1,
                                                          extra_quals = extra_qualifiers))
         return seq_record
 
     if exhaustive:
-        tiles = tile_seqrecord(grna, seq_record)
+        tiles = tile_seqrecord(spacer, seq_record)
     else:
-        tiles = cas_offinder([grna], mismatch_tolerance, seqs = [seq_record])
+        tiles = cas_offinder([spacer], mismatch_tolerance, locus = [seq_record])
 
     pred = estimator.predict(tiles.values)
     pred_ser = pd.Series(pred, index=tiles.index)
@@ -58,13 +63,13 @@ def annotate_grna_binding(grna, seq_record, estimator, extra_qualifiers=None,
     hits = pred_ser[pred_ser]
 
     for _, strand, left in hits.index:
-        seq_record.features.append(_build_target_feature(left, strand, grna, score=1,
+        seq_record.features.append(_build_target_feature(left, strand, spacer, score=1,
                                                          extra_quals = extra_qualifiers))
 
     return seq_record
 
 
-def _build_target_feature(left, strand, grna, score=1, extra_quals = None):
+def _build_target_feature(left, strand, spacer, score=1, extra_quals = None):
     """
     Parameters
     ----------
@@ -72,7 +77,7 @@ def _build_target_feature(left, strand, grna, score=1, extra_quals = None):
         Left most position of the binding site
     strand : int
         1 or -1 indicating the positive or negative strand
-    grna : str
+    spacer : Seq
         gRNA that's targetted to this location
     score : float
         Binding score of the gRNA to this location
@@ -89,7 +94,7 @@ def _build_target_feature(left, strand, grna, score=1, extra_quals = None):
     if strand not in {-1, 1}:
         raise ValueError('Strand must be {1, -1}')
 
-    quals = {'gRNA': grna,
+    quals = {'spacer': str(spacer),
              'On Target Score': score}
     if extra_quals is not None:
         quals.update(extra_quals)
