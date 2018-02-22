@@ -244,11 +244,15 @@ class TestLocate(object):
         np.testing.assert_array_equal([54, 16, np.nan, 29], loc[:,0])
         np.testing.assert_array_equal([1, 1, np.nan, 1], loc[:,1])
 
-        cor_target = ['A'*20 + 'CGG', 'C'*19+'T' + 'CGG', np.nan, 'T' + 'A'*19 + 'TGG']
-        cor_target = [Seq(s, alphabet = generic_dna) for s in cor_target]
+        cor_target = [Seq('A'*20 + 'CGG', alphabet = generic_dna),
+                      Seq('C'*19+'T' + 'CGG', alphabet = generic_dna),
+                      np.nan,
+                      Seq('T' + 'A'*19 + 'TGG', alphabet = generic_dna)]
 
-        cor_spacer = ['A'*20, 'C'*19+'T', np.nan, 'A'*20]
-        cor_spacer = [Seq(s, alphabet = generic_rna) for s in cor_spacer]
+        cor_spacer = [Seq('A'*20, alphabet = generic_rna),
+                      Seq('C'*19+'U', alphabet = generic_rna),
+                      np.nan,
+                      Seq('A'*20, alphabet = generic_rna)]
 
         cX = pd.DataFrame(list(zip(cor_spacer, cor_target))).values
 

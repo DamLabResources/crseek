@@ -129,20 +129,20 @@ def locate_hits_in_array(X, estimator, mismatches=6):
     """
 
     def pick_best(df):
-        best = df['Score'].idxmin()
+        best = df['score'].idxmin()
         return df.loc[best, :]
 
     seqs = list(X[:,1])
-    seq_ids = [s.id for s in X[:,1]]
+    seq_ids = [s.id + ' ' + s.description for s in X[:,1]]
     grnas = np.unique(X[:, 0])
-    result = utils.cas_offinder(grnas, mismatches, seqs = seqs)
-    result['Score'] = estimator.predict_proba(result.values)
+    result = utils.cas_offinder(grnas, mismatches, locus = seqs)
+    result['score'] = estimator.predict_proba(result.values)
 
-    best_hits = result.reset_index().groupby('Name').agg(pick_best)
+    best_hits = result.reset_index().groupby('name').agg(pick_best)
     best_hits = best_hits.reindex(seq_ids)
 
-    X = best_hits[['gRNA', 'Seq']]
-    loc = best_hits[['Left', 'Strand']]
+    X = best_hits[['spacer', 'target']]
+    loc = best_hits[['left', 'strand']]
 
     return X.values, loc.values
 
@@ -169,10 +169,13 @@ def check_proto_target_input(X):
     assert np.all(spacer_lens == 20)
     assert np.all(target_lens == 23)
 
-    if any(spacer.alphabet != generic_rna for spacer in X[:, 0]):
-        raise ValueError('All spacers must have RNA alphabets')
-    if any(target.alphabet != generic_dna for target in X[:, 1]):
-        raise ValueError('All targets must have DNA alphabets')
+    try:
+        if any(spacer.alphabet != generic_rna for spacer in X[:, 0]):
+            raise ValueError('All spacers must have RNA alphabets')
+        if any(target.alphabet != generic_dna for target in X[:, 1]):
+            raise ValueError('All targets must have DNA alphabets')
+    except AttributeError:
+        raise ValueError('All sequences must be Bio.Seq objects')
 
     return True
 
