@@ -1,5 +1,6 @@
 from Bio.SeqRecord import SeqRecord
-from Bio.Seq import reverse_complement
+from Bio.Seq import Seq, reverse_complement
+from Bio.Alphabet import generic_dna, generic_rna
 from Bio import SeqIO
 import pandas as pd
 import numpy as np
@@ -88,17 +89,17 @@ def tile_seqrecord(grna, seq_record):
 
 
 
-def cas_offinder(gRNAs, mismatches, seqs = None, direc = None,
+def cas_offinder(spacers, mismatches, locus = None, direc = None,
                  pam = 'NRG', openci_devices = 'G0',
                  keeptmp = False):
     """ Call the cas-offinder tool and return the relevant info
     Parameters
     ----------
-    gRNAs : list
-        gRNAs to search for
+    spacers : list
+        spacers to search for
     mismatches : int
         Number of mismatches to allow
-    seqs : list
+    locus : list
         SeqRecords to search.
     direc : str
         Path to a directory containing fasta-files to search
@@ -117,21 +118,21 @@ def cas_offinder(gRNAs, mismatches, seqs = None, direc = None,
     """
 
     msg = 'Must provide either sequences or a directory path'
-    assert (seqs is not None) or (direc is not None), msg
+    assert (locus is not None) or (direc is not None), msg
 
     with TemporaryDirectory() as tmpdir:
 
         if direc is None:
             fasta_path = os.path.join(tmpdir, 'search_seqs.fasta')
             with open(fasta_path, 'w') as handle:
-                SeqIO.write(seqs, handle, 'fasta')
+                SeqIO.write(locus, handle, 'fasta')
             direc = tmpdir
-        elif (direc is not None) and (seqs is not None):
+        elif (direc is not None) and (locus is not None):
             tmpfile = NamedTemporaryFile(dir = direc,
                                          suffix = '.fasta',
                                          buffering = 1,
                                          mode = 'w')
-            SeqIO.write(seqs, tmpfile, 'fasta')
+            SeqIO.write(locus, tmpfile, 'fasta')
 
         input_path = os.path.join(tmpdir, 'input.txt')
         out_path = os.path.join(tmpdir, 'outdata.tsv')
@@ -139,9 +140,14 @@ def cas_offinder(gRNAs, mismatches, seqs = None, direc = None,
         with open(input_path, 'w') as handle:
             handle.write(direc + '\n')
             handle.write('NNNNNNNNNNNNNNNNNNNN'+pam + '\n')
-            for grna in gRNAs:
+            for grna in spacers:
+
+                if type(grna) != Seq:
+                    raise ValueError('spacers must be Bio.Seq objects')
+
                 # Not sure why, must be NNN no matter what the PAM length is
-                handle.write('%s%s %i\n' % (grna, 'N'*3, mismatches))
+                handle.write('%sNNN %i\n' % (grna.back_transcribe(),
+                                             mismatches))
 
         tdict = {'ifile': input_path,
                  'ofile': out_path,
@@ -159,16 +165,16 @@ def cas_offinder(gRNAs, mismatches, seqs = None, direc = None,
         with open(out_path) as handle:
             reader = csv.reader(handle, delimiter='\t')
             for row in reader:
-                out_res.append({'gRNA': row[0][:-3],
-                                'Name': row[1],
-                                'Left': int(row[2]),
-                                'Seq': row[3].upper(),
-                                'Strand': 1 if row[4] == '+' else -1})
+                out_res.append({'spacer': Seq(row[0][:-3], alphabet=generic_dna).transcribe(),
+                                'name': row[1],
+                                'left': int(row[2]),
+                                'target': Seq(row[3].upper(), alphabet = generic_dna),
+                                'strand': 1 if row[4] == '+' else -1})
         if len(out_res) > 0:
-            return pd.DataFrame(out_res).groupby(['Name', 'Strand', 'Left'])[['gRNA', 'Seq']].first()
+            return pd.DataFrame(out_res).groupby(['name', 'strand', 'left'])[['spacer', 'target']].first()
         else:
-            index = pd.MultiIndex.from_tuples([], names = ['Name', 'Strand', 'Left'])
-            return pd.DataFrame([], index = index, columns = ['gRNA', 'Seq'])
+            index = pd.MultiIndex.from_tuples([], names = ['name', 'strand', 'left'])
+            return pd.DataFrame([], index = index, columns = ['spacer', 'target'])
 
 
 def overlap_regions(hits, bed_path):

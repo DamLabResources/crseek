@@ -1,5 +1,6 @@
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq, reverse_complement
+from Bio.Alphabet import generic_dna, generic_rna
 from crisprtree import utils
 import pandas as pd
 from pandas.util.testing import assert_series_equal, assert_frame_equal
@@ -111,53 +112,63 @@ class TestCasOff(object):
                 make_random_seq_restrict(50) + 'T'*14 + 'A'*6 + pam + make_random_seq_restrict(50),   # no hit
                 ]
         seq_recs = [SeqRecord(Seq(s), id='Num-%i' % i, description='') for i, s in enumerate(seqs)]
-        gRNA = 'T'*20
+        spacer = Seq('U'*20, alphabet = generic_rna)
 
         cor_index = pd.MultiIndex.from_tuples([('Num-0', 1, 50),
                                                ('Num-1', 1, 50),
                                                ('Num-2', 1, 50),
                                                ('Num-3', 1, 50),],
-                                              names = ['Name', 'Strand', 'Left'])
-        cor = pd.DataFrame([{'gRNA': gRNA, 'Seq': 'T'*20 + pam},
-                            {'gRNA': gRNA, 'Seq': 'T'*19 + 'A' + pam},
-                            {'gRNA': gRNA, 'Seq': 'T'*18 + 'AA' + pam},
-                            {'gRNA': gRNA, 'Seq': 'T'*17 + 'AAA'+pam},],
-                           index = cor_index)[['gRNA', 'Seq']]
+                                              names = ['name', 'strand', 'left'])
+        cor = pd.DataFrame([{'spacer': spacer, 'target': 'T'*20 + pam},
+                            {'spacer': spacer, 'target': 'T'*19 + 'A' + pam},
+                            {'spacer': spacer, 'target': 'T'*18 + 'AA' + pam},
+                            {'spacer': spacer, 'target': 'T'*17 + 'AAA'+pam},],
+                           index = cor_index)[['spacer', 'target']]
 
-        return gRNA, seq_recs, cor
+        return spacer, seq_recs, cor
 
     def test_basic_seqs(self):
 
-        gRNA, seq_recs, cor = self.make_basic()
-        res = utils.cas_offinder([gRNA], 3, seqs=seq_recs)
+        spacer, seq_recs, cor = self.make_basic()
+        res = utils.cas_offinder([spacer], 3, locus =seq_recs)
         assert_frame_equal(res, cor)
+
+    def test_smart_error_for_str_spacers(self):
+
+        _, seq_recs, cor = self.make_basic()
+        with pytest.raises(ValueError):
+            utils.cas_offinder(['U'*20], 3, locus =seq_recs)
+
+
+
 
     def test_no_hits(self):
 
         _, seq_recs, cor = self.make_basic()
 
         np.random.seed(20)
-        gRNA = ''.join(np.random.choice(list('ATCG'), size = 20))
+        spacer = Seq(''.join(np.random.choice(list('AUCG'), size = 20)),
+                     alphabet = generic_rna)
 
-        res = utils.cas_offinder([gRNA], 0, seqs=seq_recs)
+        res = utils.cas_offinder([spacer], 0, locus =seq_recs)
         assert len(res.index) == 0
-        assert res.index.names == ['Name', 'Strand', 'Left']
+        assert res.index.names == ['name', 'strand', 'left']
         np.testing.assert_array_equal(res.columns,
-                                      ['gRNA', 'Seq'])
+                                      ['spacer', 'target'])
 
     def test_change_pam_long(self):
 
         NmCas9_pam = 'NNNNGATT'
-        gRNA, seq_recs, cor = self.make_basic(pam = 'CGCGGATT')
-        res = utils.cas_offinder([gRNA], 3, seqs=seq_recs, pam=NmCas9_pam)
+        spacer, seq_recs, cor = self.make_basic(pam = 'CGCGGATT')
+        res = utils.cas_offinder([spacer], 3, locus = seq_recs, pam=NmCas9_pam)
         assert_frame_equal(res, cor)
 
     def test_change_pam_short(self):
 
         FnCas9_pam = 'NG'
-        gRNA, seq_recs, cor = self.make_basic(pam = 'CG')
+        spacer, seq_recs, cor = self.make_basic(pam = 'CG')
         print(cor)
-        res = utils.cas_offinder([gRNA], 3, seqs=seq_recs, pam=FnCas9_pam)
+        res = utils.cas_offinder([spacer], 3, locus =seq_recs, pam=FnCas9_pam)
         print(res)
         assert_frame_equal(res, cor)
 
@@ -166,17 +177,17 @@ class TestCasOff(object):
         mock.side_effect = FileNotFoundError
 
         with pytest.raises(AssertionError):
-            gRNA, seq_recs, cor = self.make_basic()
-            res = utils.cas_offinder([gRNA], 3, seqs=seq_recs)
+            spacer, seq_recs, cor = self.make_basic()
+            res = utils.cas_offinder([spacer], 3, locus =seq_recs)
 
     def test_basic_path(self):
 
-        gRNA, seq_recs, cor = self.make_basic()
+        spacer, seq_recs, cor = self.make_basic()
         with TemporaryDirectory() as tmpdir:
             with open(os.path.join(tmpdir, 'seqs.fasta'), 'w') as handle:
                 SeqIO.write(seq_recs, handle, 'fasta')
 
-            res = utils.cas_offinder([gRNA], 5, direc=tmpdir)
+            res = utils.cas_offinder([spacer], 5, direc=tmpdir)
             assert_frame_equal(res, cor)
 
     def test_missing_both(self):
@@ -186,12 +197,12 @@ class TestCasOff(object):
 
     def test_provide_both(self):
 
-        gRNA, seq_recs, cor = self.make_basic()
+        spacer, seq_recs, cor = self.make_basic()
         with TemporaryDirectory() as tmpdir:
             with open(os.path.join(tmpdir, 'seqs.fasta'), 'w') as handle:
                 SeqIO.write(seq_recs[1:], handle, 'fasta')
 
-            res = utils.cas_offinder([gRNA], 3, direc=tmpdir, seqs=[seq_recs[0]])
+            res = utils.cas_offinder([spacer], 3, direc=tmpdir, locus =[seq_recs[0]])
             assert_frame_equal(res, cor)
 
 
