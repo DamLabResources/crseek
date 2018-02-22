@@ -9,6 +9,7 @@ from Bio.SeqRecord import SeqRecord
 
 from crisprtree.preprocessing import one_hot_encode_row, check_proto_target_input, match_encode_row, locate_hits_in_array
 from crisprtree.estimators import CFDEstimator
+from crisprtree import exceptions
 
 
 class TestBasicInputs(object):
@@ -33,6 +34,33 @@ class TestBasicInputs(object):
 
         with pytest.raises(ValueError):
             check_proto_target_input(inp)
+
+    def test_bad_alphabet_inputs(self):
+
+        spacer_d = Seq('A'*20, alphabet = generic_dna)
+        spacer_r = Seq('A'*20, alphabet = generic_rna)
+        target_d = Seq('A'*20 + 'CGG', alphabet = generic_dna)
+        target_r = Seq('A'*20 + 'CGG', alphabet = generic_rna)
+
+        checks = [check_proto_target_input,
+                  preprocessing.MatchingTransformer().transform,
+                  preprocessing.OneHotTransformer().transform
+                  ]
+
+        inp = np.array([[spacer_r, target_r],
+                         [spacer_r, target_r]])
+
+        for check in checks:
+            with pytest.raises(exceptions.WrongAlphabetException):
+                check(inp)
+
+        inp = np.array([[spacer_d, target_d],
+                         [spacer_d, target_d]])
+
+        for check in checks:
+            with pytest.raises(exceptions.WrongAlphabetException):
+                check(inp)
+
 
     def test_missing_col(self):
 
@@ -180,6 +208,20 @@ class TestMatchingEncoding(object):
         assert res.shape == (20+1, )
 
         np.testing.assert_array_equal(cor.astype(bool), res)
+
+    def test_U_encoding(self):
+
+        spacer = Seq('U' + 'A'*19, alphabet = generic_rna)
+        target = Seq('T' + 'A'*19 + 'AGG', alphabet = generic_dna)
+
+        cor = np.array([True]*21)
+
+        res = match_encode_row(spacer, target)
+
+        assert res.shape == (20+1, )
+
+        np.testing.assert_array_equal(cor.astype(bool), res)
+
 
     def test_transforming(self):
 

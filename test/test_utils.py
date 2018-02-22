@@ -2,6 +2,7 @@ from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq, reverse_complement
 from Bio.Alphabet import generic_dna, generic_rna
 from crisprtree import utils
+from crisprtree import exceptions
 import pandas as pd
 from pandas.util.testing import assert_series_equal, assert_frame_equal
 from tempfile import TemporaryDirectory, NamedTemporaryFile
@@ -59,21 +60,54 @@ class TestTiling(object):
 
     def test_basic(self):
 
-        grna = 'A'*20
+        grna = Seq('A'*20, alphabet = generic_rna)
         bseq = 'ACTG'*20
-        seqR = SeqRecord(Seq(bseq), id='checking')
+        seqR = SeqRecord(Seq(bseq, alphabet = generic_dna),
+                         id='checking')
 
         res = utils.tile_seqrecord(grna, seqR)
 
         assert len(res) > 1
-        assert (res['gRNA'] == grna).all()
+        assert (res['spacer'] == grna).all()
 
         for (name, strand, start), row in res.iterrows():
             assert name == 'checking'
             if strand == 1:
-                assert row['Seq'] == bseq[start:start+23]
+                assert str(row['target']) == bseq[start:start+23]
             else:
-                assert row['Seq'] == reverse_complement(bseq[start:start+23])
+                assert str(row['target']) == reverse_complement(bseq[start:start+23])
+
+    def test_str_spacer(self):
+
+        grna = 'A'*20
+        bseq = 'ACTG'*20
+        seqR = SeqRecord(Seq(bseq, alphabet = generic_dna),
+                         id='checking')
+
+        with pytest.raises(ValueError):
+            utils.tile_seqrecord(grna, seqR)
+
+
+    def test_dna_spacer(self):
+
+        grna = Seq('A'*20, alphabet = generic_dna)
+        bseq = 'ACTG'*20
+        seqR = SeqRecord(Seq(bseq, alphabet = generic_dna),
+                         id='checking')
+
+        with pytest.raises(exceptions.WrongAlphabetException):
+            utils.tile_seqrecord(grna, seqR)
+
+    def test_rna_locus(self):
+
+        grna = Seq('A'*20, alphabet = generic_rna)
+        bseq = 'ACTG'*20
+        seqR = SeqRecord(Seq(bseq, alphabet = generic_rna),
+                         id='checking')
+
+        with pytest.raises(exceptions.WrongAlphabetException):
+            utils.tile_seqrecord(grna, seqR)
+
 
 
 def _missing_casoffinder():
@@ -139,8 +173,18 @@ class TestCasOff(object):
         with pytest.raises(ValueError):
             utils.cas_offinder(['U'*20], 3, locus =seq_recs)
 
+    def test_smart_error_for_bad_alphabet_spacers(self):
 
+        spacer, seq_recs, cor = self.make_basic()
+        spacer.alphabet = generic_dna
+        with pytest.raises(exceptions.WrongAlphabetException):
+            utils.cas_offinder([spacer], 3, locus =seq_recs)
 
+    def test_smart_error_for_str_locus(self):
+
+        spacer, seq_recs, cor = self.make_basic()
+        with pytest.raises(ValueError):
+            utils.cas_offinder([spacer], 3, locus =['A'*500])
 
     def test_no_hits(self):
 

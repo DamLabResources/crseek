@@ -2,8 +2,9 @@ from sklearn.base import BaseEstimator
 import numpy as np
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
-from Bio.Alphabet import generic_dna, generic_rna
+from Bio.Alphabet import generic_dna, generic_rna, RNAAlphabet, DNAAlphabet
 from crisprtree import utils
+from crisprtree import exceptions
 
 
 class MatchingTransformer(BaseEstimator):
@@ -169,6 +170,9 @@ def check_proto_target_input(X):
     assert np.all(spacer_lens == 20)
     assert np.all(target_lens == 23)
 
+    _ = [exceptions._check_seq_alphabet(spacer, base_alphabet = RNAAlphabet) for spacer in X[:,0]]
+    _ = [exceptions._check_seq_alphabet(target, base_alphabet = DNAAlphabet) for target in X[:,1]]
+
     try:
         if any(spacer.alphabet != generic_rna for spacer in X[:, 0]):
             raise ValueError('All spacers must have RNA alphabets')
@@ -196,7 +200,7 @@ def match_encode_row(spacer, target):
 
     # TODO: Deal with different PAMs
 
-    features = [g == l for g, l in zip(str(spacer).replace('U', 'T'), target)]
+    features = [g == l for g, l in zip(spacer.back_transcribe(), target)]
     features.append(target[-2:] == 'GG')
 
     return np.array(features)

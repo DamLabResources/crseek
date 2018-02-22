@@ -1,6 +1,6 @@
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq, reverse_complement
-from Bio.Alphabet import generic_dna, generic_rna
+from Bio.Alphabet import generic_dna, generic_rna, _get_base_alphabet, RNAAlphabet, DNAAlphabet
 from Bio import SeqIO
 import pandas as pd
 import numpy as np
@@ -11,6 +11,8 @@ from subprocess import STDOUT, CalledProcessError
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from Bio.SeqUtils import nt_search
 from Bio.Seq import reverse_complement
+
+from crisprtree import exceptions
 
 import csv
 
@@ -52,13 +54,13 @@ def extract_possible_targets(seq_record, pams = ('NGG',), both_strands = True):
     return sorted(f for f in found if len(f) == 20)
 
 
-def tile_seqrecord(grna, seq_record):
+def tile_seqrecord(spacer, seq_record):
     """ Simple utility function to convert a sequence and gRNA into something
     the preprocessing tools can deal with.
 
     Parameters
     ----------
-    grna : str
+    spacer : Seq
     seq_record : SeqRecord
         Sequence to tile
 
@@ -69,24 +71,28 @@ def tile_seqrecord(grna, seq_record):
 
     """
 
+
+    exceptions._check_seq_alphabet(spacer, RNAAlphabet)
+    exceptions._check_seq_alphabet(seq_record.seq, DNAAlphabet)
+
     tiles = []
     str_seq = str(seq_record.seq)
     for n in range(len(str_seq)-23):
-        tiles.append({'Name': seq_record.id,
-                      'Left': n,
-                      'Strand': 1,
-                      'gRNA': grna,
-                      'Seq': str_seq[n:n+23]})
-        tiles.append({'Name': seq_record.id,
-                      'Left': n,
-                      'Strand': -1,
-                      'gRNA': grna,
-                      'Seq': reverse_complement(str_seq[n:n+23])})
+        tiles.append({'name': seq_record.id,
+                      'left': n,
+                      'strand': 1,
+                      'spacer': spacer,
+                      'target': str_seq[n:n+23]})
+        tiles.append({'name': seq_record.id,
+                      'left': n,
+                      'strand': -1,
+                      'spacer': spacer,
+                      'target': Seq(reverse_complement(str_seq[n:n+23]),
+                                    alphabet = generic_dna)})
 
     df = pd.DataFrame(tiles)
 
-    return df.groupby(['Name', 'Strand', 'Left'])[['gRNA', 'Seq']].first()
-
+    return df.groupby(['name', 'strand', 'left'])[['spacer', 'target']].first()
 
 
 def cas_offinder(spacers, mismatches, locus = None, direc = None,
@@ -120,12 +126,17 @@ def cas_offinder(spacers, mismatches, locus = None, direc = None,
     msg = 'Must provide either sequences or a directory path'
     assert (locus is not None) or (direc is not None), msg
 
+    _ = [exceptions._check_seq_alphabet(s, base_alphabet = RNAAlphabet) for s in spacers]
+
     with TemporaryDirectory() as tmpdir:
 
         if direc is None:
             fasta_path = os.path.join(tmpdir, 'search_seqs.fasta')
             with open(fasta_path, 'w') as handle:
-                SeqIO.write(locus, handle, 'fasta')
+                try:
+                    SeqIO.write(locus, handle, 'fasta')
+                except AttributeError:
+                    raise ValueError('locus must be Bio.Seq objects')
             direc = tmpdir
         elif (direc is not None) and (locus is not None):
             tmpfile = NamedTemporaryFile(dir = direc,
