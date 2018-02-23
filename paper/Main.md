@@ -49,7 +49,7 @@
 # Uses
 
 ## Task
- You are tasked with introducing an eGFP plasmid into the newly sequenced Thermofilum sp. NZ13-TE1 genome.
+ You are tasked with introducing an eGFP plasmid into the newly sequenced Clostridioides difficile genome.
  You want to make an spCas9 positive control knocking out the eGFP gene while missing the rest of the newly 
  sequenced genome. The following code-snippet walks through a basic execution strategy.
  
@@ -64,10 +64,10 @@
  - Summary Figure
  
 ## Task
- You are tasked with creating an spCas9 knock-out library for each gene in the Thermofilum genome. 
+ You are tasked with creating an spCas9 knock-out library for each gene in the Clostridioides difficile genome.
  You want to find 5 protospacers for each gene which have a minimum level of off-target potential.
  
- 1. Load in the Thermofilum genome.
+ 1. Load in the Clostridioides difficile genome.
  2. Iterate through all CDS annotations in the file.
      1. Extract all possible protospacers
      2. Scan all possible protospacers against the genome using the CFD matrix
@@ -83,16 +83,16 @@
  
  1. Load in plasmid sequences
  2. Extract best hit from each sequence
- 3. Evaluate effectivness
+ 3. Evaluate effectiveness using multiple estimators
  4. Compare predicted vs observed in IVT-cutting assay
  
  - Code Snippet using API
  - Summary Figure
  
 ## Task 4
- Training new predictor using CIRCLE-Seq data
+ Training new predictor using GUIDE-Seq data
  
- 1. Load in CS data
+ 1. Load in GS data
  2. Normalize counts using a rank scale
  3. Select random positions on the genome as negatives
  4. Make pipeline of one-hot encoder and GrandientBoosting

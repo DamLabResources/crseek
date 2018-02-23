@@ -10,6 +10,7 @@ from Bio.SeqRecord import SeqRecord
 from Bio.SeqFeature import SeqFeature
 
 from tempfile import TemporaryDirectory, NamedTemporaryFile
+import yaml
 
 this_dir, this_filename = os.path.split(os.path.abspath(__file__))
 DATA_PATH = os.path.join(this_dir, '..',  "data")
@@ -64,20 +65,23 @@ class MismatchEstimator(SequenceBase):
     """
 
     def __init__(self, seed_len = 4, miss_seed = 0,
-                 miss_non_seed = 3, require_pam = True, PAM='NGG'):
+                 miss_tail = 2, miss_non_seed = 3,
+                 require_pam = True, pam='NGG'):
         """
 
         Parameters
         ----------
         seed_len : int
             The length of the seed region.
+        tail_len : int
+            The length of the tail region.
         miss_seed : int
             The number of mismatches allowed in the seed region.
-        miss_non_seed : int
-            The number of mismatches allowed in the non-seed region.
-        require_pam : bool
+        miss_tail : int
+            The number of mismatches allowed in the tail region.
+        pam : str
             Must the PAM be present
-        PAM : str
+        pam : str
             Specific PAM
 
         Returns
@@ -85,12 +89,30 @@ class MismatchEstimator(SequenceBase):
         MismatchEstimator
         """
 
-        assert seed_len <= 20, 'seed_len cannot be longer then 20'
         self.seed_len = seed_len
         self.miss_seed = miss_seed
         self.miss_non_seed = miss_non_seed
+        self.miss_tail = miss_tail
         self.require_pam = require_pam
-        self.PAM = PAM
+        self.pam = pam
+
+    @property
+    def tail_len(self):
+        return 20 - self.seed_len
+
+    @staticmethod
+    def load_yaml(path):
+
+        with open(path) as handle:
+            data = yaml.load(handle)
+
+        kwargs = {'seed_len': data.get('Seed Length', 4),
+                  'miss_seed': data.get('Seed Misses', 0),
+                  'miss_non_seed': data.get('NonSeed Misses', 2),
+                  'miss_tail': data.get('Tail Misses', 3),
+                  'pam': data.get('PAM', 'NGG')}
+
+        return MismatchEstimator.build_pipeline(**kwargs)
 
     @staticmethod
     def build_pipeline(**kwargs):
@@ -108,6 +130,8 @@ class MismatchEstimator(SequenceBase):
 
         pipe = Pipeline(steps = [('transform', MatchingTransformer()),
                                  ('predict', MismatchEstimator(**kwargs))])
+        pipe.matcher = pipe.steps[1][1]
+
         return pipe
 
     def fit(self, X, y = None):
@@ -131,8 +155,8 @@ class MismatchEstimator(SequenceBase):
         seed_miss = (X[:, -(self.seed_len+1):-1] == False).sum(axis=1)
         non_seed_miss = (X[:, :-(self.seed_len)] == False).sum(axis=1)
 
-        binders = (seed_miss <= self.miss_seed) & (non_seed_miss <= self.miss_non_seed)
-        if self.require_pam:
+        binders = (seed_miss <= self.miss_seed) & (non_seed_miss <= self.miss_tail)
+        if self.pam:
             binders &= X[:, -1]
 
         return binders
@@ -313,3 +337,109 @@ class CFDEstimator(SequenceBase):
 
 
 
+class KineticEstimator(BaseEstimator):
+
+    def __init__(self, nseed = 11, dC = 1.8, Pmax = 0.74, variant = None,
+                 dI = None, npair = None, pam = 'NGG', cutoff = 0.5):
+        """
+        Parameters
+        ----------
+        nseed : int
+            Position at which half of single-missmatches will fail to cleave their target
+        dC : float
+            Free energy associated with a correct binding pair.
+        Pmax : float
+            The maximal cleavage efficiency of any single missmatch target
+        variant : str
+            Name of variant described in the paper. Must be:
+             {spCas9,LbCpf1, AsCpf1}
+             Sets all appropriate constants
+        dI : float
+            Free energy gain associated with an incorrect binding pair.
+            Currently unused.
+        npair : int
+            Allowable distance between missmathes. Currently unused.
+        pam : str
+            PAM sequence.
+        cutoff : float
+            Probability cutoff to use when making binary comparisons.
+
+        Returns
+        -------
+
+        KineticEstimator
+
+        """
+
+        if variant is not None:
+            # Values taken from Figure 6: https://doi.org/10.1016/j.celrep.2018.01.045
+            # Klein et al, Cell Reports, Feb 2018
+            knowns = {'spCas9': {'nseed': 11, 'dC': 1.8, 'Pmax': 0.74, 'pam': 'NGG'},
+                      'LbCpf1': {'nseed': 19, 'dC': 2.1, 'Pmax': 0.83, 'pam': 'NGG'},
+                      'AsCpf1': {'nseed': 19, 'dC': 4, 'Pmax': 0.83, 'pam': 'NGG'}}
+            try:
+                data = knowns[variant]
+            except KeyError:
+                msg = 'Variant must be one of {spCas9,LbCpf1, AsCpf1} got: %s' % variant
+                raise ValueError(msg)
+
+            self.nseed = data['nseed']
+            self.dC = data['dC']
+            self.Pmax = data['Pmax']
+            self.pam = data['pam']
+
+        else:
+            self.nseed = nseed
+            self.dC = dC
+            self.Pmax = Pmax
+            self.pam = pam
+
+        self.cutoff = cutoff
+
+
+    @staticmethod
+    def build_pipeline(**kwargs):
+        """ Utility function to build a pipeline.
+        Parameters
+        ----------
+        Keyword arguements are passed to the Estimator on __init__
+
+        Returns
+        -------
+
+        Pipeline
+
+        """
+
+        pipe = Pipeline(steps = [('transform', MatchingTransformer()),
+                                 ('predict', KineticEstimator(**kwargs))])
+        return pipe
+
+    def fit(self, X, y=None):
+        return self
+
+    def predict(self, X):
+
+        return self.predict_proba(X) >= self.cutoff
+
+    def predict_proba(self, X):
+
+        if X.shape[1] != 21:
+            raise ValueError('Input array shape must be Nx21')
+
+        # Input array  : Position 0 => PAM distal region
+        # Klein model  : Position 0 => PAM proximal region
+
+        pos = np.arange(20, 0, -1)
+        pclv = self.Pmax/(1+np.exp(-(pos-self.nseed)*self.dC))
+
+        vals = pclv*(X[:,:-1]==False)
+
+        scores = np.ones_like(vals)
+        scores[X[:,:-1]==False] = vals[X[:,:-1]==False]
+
+        probs = scores.prod(axis=1)
+
+        # PAMs must be present
+        probs *= X[:, -1]
+        return probs

@@ -1,4 +1,4 @@
-from Bio.Seq import Seq
+from Bio.Seq import Seq, reverse_complement
 from Bio.SeqRecord import SeqRecord
 from Bio.SeqFeature import SeqFeature, FeatureLocation
 import numpy as np
@@ -17,8 +17,8 @@ def annotate_grna_binding(grna, seq_record, estimator, extra_qualifiers=None,
         gRNA to search for.
     seq_record : SeqRecord
         The sequence to search within
-    estimator : SequenceBase
-        Estimator to use to evaluate gRNA binding
+    estimator : SequenceBase or None
+        Estimator to use to evaluate gRNA binding. If None, exact string matching is used.
     extra_qualifiers : dict
         Extra qualifiers to add to the SeqFeature
     exhaustive : bool
@@ -33,6 +33,19 @@ def annotate_grna_binding(grna, seq_record, estimator, extra_qualifiers=None,
     SeqRecord
 
     """
+
+    if estimator is None:
+        pos = seq_record.seq.find(grna)
+        strand = 1
+        if pos == -1:
+            pos = seq_record.seq.find(reverse_complement(grna))
+            strand = -1
+            if pos == -1:
+                raise ValueError('Could not find exact match on either strand')
+
+        seq_record.features.append(_build_target_feature(pos, strand, grna, score=1,
+                                                         extra_quals = extra_qualifiers))
+        return seq_record
 
     if exhaustive:
         tiles = tile_seqrecord(grna, seq_record)

@@ -5,7 +5,8 @@ import pandas as pd
 import numpy as np
 import shlex
 from io import StringIO, BytesIO
-from subprocess import check_call, STDOUT, check_output,CalledProcessError
+import subprocess
+from subprocess import STDOUT, CalledProcessError, check_output
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from Bio.SeqUtils import nt_search
 from Bio.Alphabet import generic_alphabet
@@ -146,8 +147,6 @@ def tile_seqrecord(grna, seq_record):
 
 def _run_casoffinder(input_path, out_path, openci_devices):
 
-    raise NotImplementedError
-
     tdict = {'ifile': input_path,
              'ofile': out_path,
              'dev': openci_devices}
@@ -156,7 +155,7 @@ def _run_casoffinder(input_path, out_path, openci_devices):
     FNULL = open(os.devnull, 'w')
     call_args = shlex.split(cmd % tdict)
     try:
-        check_call(call_args, stdout=FNULL, stderr=STDOUT)
+        subprocess.check_call(call_args, stdout=FNULL, stderr=STDOUT)
     except FileNotFoundError:
         raise AssertionError('cas-offinder not installed on the path')
 
@@ -190,8 +189,9 @@ def _build_cas_offinder_input_file(handle, gRNAs, fasta_direc,
 
 
 def cas_offinder(gRNAs, mismatches, seqs = None, direc = None,
-                      openci_devices = 'G0', keeptmp = False,
-                 template = 'NNNNNNNNNNNNNNNNNNNNNRG'):
+                 openci_devices = 'G0', keeptmp = False,
+                 template = 'NNNNNNNNNNNNNNNNNNNNNRG',
+                 pam = 'NRG'):
     """ Call the cas-offinder tool and return the relevant info
     Parameters
     ----------
@@ -203,6 +203,8 @@ def cas_offinder(gRNAs, mismatches, seqs = None, direc = None,
         SeqRecords to search.
     direc : str
         Path to a directory containing fasta-files to search
+    pam : str
+        PAM to use when searching
     openci_devices : str
         Formatted string of device-IDs acceptable to cas-offinder
     keeptmp : bool
@@ -238,10 +240,8 @@ def cas_offinder(gRNAs, mismatches, seqs = None, direc = None,
         out_path = os.path.join(tmpdir, 'outdata.tsv')
 
         with open(input_path, 'w') as handle:
-
             _build_cas_offinder_input_file(handle, gRNAs, direc, mismatches,
                                            template = template)
-
         _run_casoffinder(input_path, out_path, openci_devices)
 
         out_res = []
@@ -253,8 +253,11 @@ def cas_offinder(gRNAs, mismatches, seqs = None, direc = None,
                                 'Left': int(row[2]),
                                 'Seq': row[3].upper(),
                                 'Strand': 1 if row[4] == '+' else -1})
-
-    return pd.DataFrame(out_res).groupby(['Name', 'Strand', 'Left'])[['gRNA', 'Seq']].first()
+        if len(out_res) > 0:
+            return pd.DataFrame(out_res).groupby(['Name', 'Strand', 'Left'])[['gRNA', 'Seq']].first()
+        else:
+            index = pd.MultiIndex.from_tuples([], names = ['Name', 'Strand', 'Left'])
+            return pd.DataFrame([], index = index, columns = ['gRNA', 'Seq'])
 
 
 def overlap_regions(hits, bed_path):
@@ -295,7 +298,7 @@ def overlap_regions(hits, bed_path):
         tdict = {'genes': bed_path, 'hit': handle.name}
         cmd = 'bedtools intersect -a %(hit)s -b %(genes)s -loj -u'
         call_args = shlex.split(cmd % tdict)
-        out = check_output(call_args)
+        out = subprocess.check_output(call_args)
         cols = ['Name', 'Left', 'Right', '_', '_', 'Strand']
         df = pd.read_csv(BytesIO(out), sep='\t',
                          header = None,
@@ -306,3 +309,13 @@ def overlap_regions(hits, bed_path):
     _, found = hits.align(ser, axis=0, join='left')
 
     return found.fillna(False)
+
+
+def _missing_casoffinder():
+    """ Returns True if cas-offinder is not on the path"""
+
+    try:
+        out = check_output(['which', 'cas-offinder'])
+        return len(out.strip()) == 0
+    except CalledProcessError:
+        return True
