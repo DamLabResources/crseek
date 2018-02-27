@@ -10,6 +10,7 @@ from Bio.SeqRecord import SeqRecord
 from crisprtree.preprocessing import one_hot_encode_row, check_proto_target_input, match_encode_row, locate_hits_in_array
 from crisprtree.estimators import CFDEstimator
 from crisprtree import exceptions
+from crisprtree import utils
 
 
 class TestBasicInputs(object):
@@ -257,6 +258,7 @@ def make_random_seq(bp):
     return ''.join(np.random.choice(list('ACGT'), size = bp))
 
 
+@pytest.mark.skipif(utils._missing_casoffinder(), reason="Need CasOff installed")
 class TestLocate(object):
 
     def test_basic(self):

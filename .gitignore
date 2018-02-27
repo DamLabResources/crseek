@@ -1,7 +1,7 @@
 # pycharm .idea files
 .idea/
 .cache
-
+.ipynb_checkpoints/
 
 *.py[cod]
 

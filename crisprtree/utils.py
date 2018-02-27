@@ -7,16 +7,73 @@ import numpy as np
 import shlex
 from io import StringIO, BytesIO
 import subprocess
-from subprocess import STDOUT, CalledProcessError
+from subprocess import STDOUT, CalledProcessError, check_output
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from Bio.SeqUtils import nt_search
-from Bio.Seq import reverse_complement
+from Bio.Alphabet import generic_alphabet
 
 from crisprtree import exceptions
 
 import csv
 
 import os
+
+
+def smrt_seq_convert(outfmt, seqs, default_phred=None,
+                     alphabet=generic_alphabet):
+    """Converts iterable of any sequence type into another format.
+
+    This function transparently converts sequence objects (even mixed lists)
+    into any other sequence representation. Input and output data can be
+    Bio.SeqRecord, Bio.Seq, str, or (name, str) tuples. If the `default_phred`
+    kwarg is provided then it will transparently add default quality scores.
+
+    If names are needed for the output format but are not included ('str'
+    and 'Seq' inputs) then the ids are generated using the position in the
+    iterable.
+
+    Parameters
+    ----------
+    outfmt : { 'str', 'SeqRecord', 'Seq', 'tuple' }
+        The desired output format.
+    seqs : iterable
+        An iterable of sequences. They can be any of the above formats.
+    default_phred : int, optional
+        The default phred-score to give to every call when outputing a
+        SeqRecord format.
+    alphabet : Bio.Alphabet.generic_nucleotide, optional.
+        The alphabet to use when generating the Seq and SeqRecord objects.
+
+    Returns
+    -------
+    generator
+        A generator object yielding the records in the desired format.
+    """
+
+    possible_formats = {'str': lambda x: str(x.seq),
+                        'SeqRecord': lambda x: x,
+                        'Seq': lambda x: x.seq,
+                        'tuple': lambda x: (x.id, str(x.seq))}
+    assert outfmt in possible_formats
+    for num, seq_obj in enumerate(seqs):
+        if isinstance(seq_obj, SeqRecord):
+            seq_rec = seq_obj
+        elif isinstance(seq_obj, Seq):
+            seq_rec = SeqRecord(seq_obj, id='Seq-%i' % num)
+        elif isinstance(seq_obj, str):
+            seq_rec = SeqRecord(Seq(seq_obj, alphabet=alphabet),
+                                          id='Seq-%i' % num)
+        elif isinstance(seq_obj, tuple):
+            seq_rec = SeqRecord(Seq(seq_obj[1], alphabet=alphabet),
+                                          id=seq_obj[0])
+        else:
+            raise AssertionError("Don't understand obj of type: %s" % type(seq_obj))
+
+        if default_phred and ('phred_quality' not in seq_rec.letter_annotations):
+            seq_rec.letter_annotations['phred_quality'] = [default_phred]*len(seq_rec)
+
+        yield possible_formats[outfmt](seq_rec)
+
 
 
 def extract_possible_targets(seq_record, pams = ('NGG',), both_strands = True):
@@ -93,10 +150,53 @@ def tile_seqrecord(spacer, seq_record):
 
     return df.groupby(['name', 'strand', 'left'])[['spacer', 'target']].first()
 
+def _run_casoffinder(input_path, out_path, openci_devices):
+
+    tdict = {'ifile': input_path,
+             'ofile': out_path,
+             'dev': openci_devices}
+    cmd = 'cas-offinder %(ifile)s %(dev)s %(ofile)s'
+
+    FNULL = open(os.devnull, 'w')
+    call_args = shlex.split(cmd % tdict)
+    try:
+        subprocess.check_call(call_args, stdout=FNULL, stderr=STDOUT)
+    except FileNotFoundError:
+        raise AssertionError('cas-offinder not installed on the path')
+
+
+def _build_cas_offinder_input_file(handle, spacers, fasta_direc,
+                                   mismatches,
+                                   template = 'NNNNNNNNNNNNNNNNNNNNNRG'):
+    """ Utility to build the input file template for cas-offinder
+    Parameters
+    ----------
+    handle : file
+        A file like object opened for writing
+    spacers : list
+        Any list of Seq-like objects
+    fasta_direc : str
+        Path to the directory of fasta-files for searching
+    missmatches : int
+        Number of mismatches allowed
+    template : str
+        The template for cas-offinder searching.
+
+    Returns
+    -------
+    None
+    """
+
+    handle.write(fasta_direc + '\n')
+    handle.write(template + '\n')
+    for spacer in spacers:
+        handle.write('%sNNN %i\n' % (spacer.back_transcribe(), mismatches))
+
 
 def cas_offinder(spacers, mismatches, locus = None, direc = None,
-                 pam = 'NRG', openci_devices = 'G0',
-                 keeptmp = False):
+                 openci_devices = 'G0', keeptmp = False,
+                 template = 'NNNNNNNNNNNNNNNNNNNN',
+                 pam = 'NRG'):
     """ Call the cas-offinder tool and return the relevant info
     Parameters
     ----------
@@ -114,6 +214,8 @@ def cas_offinder(spacers, mismatches, locus = None, direc = None,
         Formatted string of device-IDs acceptable to cas-offinder
     keeptmp : bool
         Keep the temporary director? Useful for debugging
+    template : str
+        The template for cas-offinder searching.
 
     Returns
     -------
@@ -148,28 +250,9 @@ def cas_offinder(spacers, mismatches, locus = None, direc = None,
         out_path = os.path.join(tmpdir, 'outdata.tsv')
 
         with open(input_path, 'w') as handle:
-            handle.write(direc + '\n')
-            handle.write('NNNNNNNNNNNNNNNNNNNN'+pam + '\n')
-            for grna in spacers:
-
-                if type(grna) != Seq:
-                    raise ValueError('spacers must be Bio.Seq objects')
-
-                # Not sure why, must be NNN no matter what the PAM length is
-                handle.write('%sNNN %i\n' % (grna.back_transcribe(),
-                                             mismatches))
-
-        tdict = {'ifile': input_path,
-                 'ofile': out_path,
-                 'dev': openci_devices}
-        cmd = 'cas-offinder %(ifile)s %(dev)s %(ofile)s'
-
-        FNULL = open(os.devnull, 'w')
-        call_args = shlex.split(cmd % tdict)
-        try:
-            subprocess.check_call(call_args, stdout=FNULL, stderr=STDOUT)
-        except FileNotFoundError:
-            raise AssertionError('cas-offinder not installed on the path')
+            _build_cas_offinder_input_file(handle, spacers, direc, mismatches,
+                                           template = template+pam)
+        _run_casoffinder(input_path, out_path, openci_devices)
 
         out_res = []
         with open(out_path) as handle:
@@ -236,3 +319,13 @@ def overlap_regions(hits, bed_path):
     _, found = hits.align(ser, axis=0, join='left')
 
     return found.fillna(False)
+
+
+def _missing_casoffinder():
+    """ Returns True if cas-offinder is not on the path"""
+
+    try:
+        out = check_output(['which', 'cas-offinder'])
+        return len(out.strip()) == 0
+    except CalledProcessError:
+        return True

@@ -5,7 +5,7 @@ sys.path.append(pacPath)
 
 import argparse
 import pandas as pd
-from crisprtree.evaluators import check_grna_across_seqs
+from crisprtree.evaluators import check_spacer_across_loci
 from crisprtree import estimators
 from Bio import SeqIO
 
@@ -41,6 +41,6 @@ if __name__ == '__main__':
     else:
         raise ValueError('Unknown method provided.')
 
-    res = check_grna_across_seqs(args.gRNA, seqs, est)
+    res = check_spacer_across_loci(args.gRNA, seqs, est)
     res.index = pd.Index(names, name = 'Sequence')
     res.to_csv(args.out)

@@ -2,6 +2,7 @@ from crisprtree import preprocessing
 from crisprtree import estimators
 from crisprtree import evaluators
 from crisprtree import annotators
+from crisprtree import utils
 from sklearn.pipeline import Pipeline
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq, reverse_complement
@@ -37,7 +38,8 @@ class TestAnnotateSingle(object):
         assert feat.qualifiers.get('spacer') == 'A'*20
         assert feat.qualifiers.get('On Target Score') == 1
 
-    def test_basic_exhaustive(self):
+    @pytest.mark.skipif(utils._missing_casoffinder(), reason="Need CasOff installed")
+    def test_basic_casoffinder(self):
 
         spacer = Seq('A'*20, alphabet = Alphabet.generic_rna)
         seqR = SeqRecord(Seq('T'*5 + 'A'*20 + 'CGG' + 'T'*40,

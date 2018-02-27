@@ -157,7 +157,6 @@ class TestMismatchEstimator(BaseChecker):
     def test_check_pipeline(self):
 
         assert self.pipeline.matcher.seed_len == 4
-        assert self.pipeline.matcher.tail_len == 16
         assert self.pipeline.matcher.miss_seed == 0
         assert self.pipeline.matcher.miss_tail == 2
         assert self.pipeline.matcher.pam == 'NGG'
@@ -288,10 +287,10 @@ class TestMITestimator(BaseChecker):
 
         match_array = make_match_array_from_seqs(spacer, hits)
 
-        mit_est = estimators.MITEstimator(cutoff = 0.75)
+        mit_est = estimators.MITEstimator(cutoff = 0.05)
         mit_cut = mit_est.predict(match_array)
 
-        cor_prob = [True, False, True, False]
+        cor_prob = [True, True, True, False]
 
         np.testing.assert_equal(cor_prob, mit_cut)
 

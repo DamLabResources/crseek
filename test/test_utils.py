@@ -11,9 +11,81 @@ from subprocess import CalledProcessError, check_output
 import os
 import pytest
 import csv
+import os
+from itertools import product
+from tempfile import TemporaryDirectory, NamedTemporaryFile
 from unittest.mock import patch
+
 import numpy as np
 from Bio.Alphabet import generic_dna, generic_rna
+import pandas as pd
+import pytest
+from Bio import SeqIO
+from Bio.Alphabet import generic_alphabet
+from Bio.Seq import Seq, reverse_complement
+from Bio.SeqRecord import SeqRecord
+from pandas.util.testing import assert_series_equal, assert_frame_equal
+
+from crisprtree import utils
+
+formats = ['SeqRecord', 'Seq', 'str', 'tuple']
+fmts = list(product(formats, formats))+[('array', 'str')]
+
+@pytest.mark.parametrize("iofmts", fmts)
+def test_smrt_seq_write(iofmts):
+
+    orig_seqs = [SeqRecord(Seq('AAAAAA',alphabet=generic_alphabet),
+                      id = 'A'),
+            SeqRecord(Seq('TTTTT',alphabet=generic_alphabet),
+                      id = 'B'),
+            SeqRecord(Seq('GGGGGG',alphabet=generic_alphabet),
+                      id = 'C')]
+
+    infmt, outfmt = iofmts
+    if infmt == 'SeqRecord':
+        seqs = [f for f in orig_seqs]
+    elif infmt == 'Seq':
+        seqs = [f.seq for f in orig_seqs]
+    elif infmt == 'str':
+        seqs = [str(f.seq) for f in orig_seqs]
+    elif infmt == 'array':
+        seqs = np.array([str(f.seq) for f in orig_seqs])
+    elif infmt == 'tuple':
+        seqs = []
+        for num, f in enumerate(orig_seqs):
+            seqs.append(('S-%i' % num, str(f.seq)))
+    else:
+        raise AssertionError('Unknown input format %s' % infmt)
+
+    rec_out = list(utils.smrt_seq_convert(outfmt, seqs))
+    rec_inp = orig_seqs
+    assert len(rec_out) == 3
+    for num, (out, inp) in enumerate(zip(rec_out, rec_inp)):
+        if infmt == 'SeqRecord':
+            inname = inp.id
+        elif infmt == 'tuple':
+            inname = 'S-%i' % num
+        else:
+            inname = 'Seq-%i' % num
+
+        if outfmt == 'SeqRecord':
+            outname = out.id
+            outseq = str(out.seq)
+        elif outfmt == 'Seq':
+            outname = None
+            outseq = str(out)
+        elif outfmt == 'str':
+            outname = None
+            outseq = out
+        elif outfmt == 'tuple':
+            outname, outseq = out
+        else:
+            raise AssertionError('Unknown outformat: %s' % outfmt)
+
+        if outname:
+            assert outname == inname
+
+        assert outseq == str(inp.seq)
 
 
 class TestExtract(object):
@@ -111,13 +183,6 @@ class TestTiling(object):
 
 
 
-def _missing_casoffinder():
-    """ Returns True if cas-offinder is not on the path"""
-
-    out = check_output(['which', 'cas-offinder'])
-    return len(out.strip()) == 0
-
-
 def make_random_seq_restrict(bp):
     """ Utility function for making random sequence
     Parameters
@@ -134,7 +199,7 @@ def make_random_seq_restrict(bp):
 
 
 
-@pytest.mark.skipif(_missing_casoffinder(), reason="Need CasOff installed")
+@pytest.mark.skipif(utils._missing_casoffinder(), reason="Need CasOff installed")
 class TestCasOff(object):
 
     def make_basic(self, pam = 'CGG'):
