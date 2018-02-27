@@ -43,13 +43,13 @@ def extract_possible_targets(seq_record, pams = ('NGG',), both_strands = True):
     found = set()
     for pam in pams:
         for res in nt_search(st_seq, pam)[1:]:
-            found.add(st_seq[res-20:res])
+            found.add(Seq(st_seq[res-20:res], alphabet = generic_dna).transcribe())
 
     if both_strands:
         rseq = reverse_complement(st_seq)
         for pam in pams:
             for res in nt_search(rseq, pam)[1:]:
-                found.add(rseq[res-20:res])
+                found.add(Seq(rseq[res-20:res], alphabet = generic_dna).transcribe())
 
     return sorted(f for f in found if len(f) == 20)
 

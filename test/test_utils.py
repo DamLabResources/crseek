@@ -13,45 +13,46 @@ import pytest
 import csv
 from unittest.mock import patch
 import numpy as np
+from Bio.Alphabet import generic_dna, generic_rna
 
 
 class TestExtract(object):
 
     def test_basic(self):
 
-        seq = 'A'*20 + 'T'*20 + 'CCGG' + 'T'*25 + 'GG'
+        seq = Seq('A'*20 + 'T'*20 + 'CCGG' + 'T'*25 + 'GG', alphabet = generic_dna)
 
-        cor = sorted(['T'*19 + 'C',
-                      'T'*20,
-                      'A'*19 + 'C'
+        cor = sorted([Seq('U'*19 + 'C', alphabet = generic_rna),
+                      Seq('U'*20, alphabet = generic_rna),
+                      Seq('A'*19 + 'C', alphabet = generic_rna),
                       ])
 
-        res = utils.extract_possible_targets(SeqRecord(Seq(seq)))
+        res = utils.extract_possible_targets(SeqRecord(seq))
 
         assert cor == res
 
     def test_single_strand(self):
 
-        seq = 'A'*20 + 'T'*20 + 'CCGG' + 'T'*25 + 'GG'
+        seq = Seq('A'*20 + 'T'*20 + 'CCGG' + 'T'*25 + 'GG', alphabet = generic_dna)
 
-        cor = sorted(['T'*19 + 'C',
-                      'T'*20,
+        cor = sorted([Seq('U'*19 + 'C', alphabet = generic_rna),
+                      Seq('U'*20, alphabet = generic_rna)
                       ])
 
-        res = utils.extract_possible_targets(SeqRecord(Seq(seq)), both_strands = False)
+        res = utils.extract_possible_targets(SeqRecord(seq), both_strands = False)
 
         assert cor == res
 
     def test_starts_with_PAM(self):
 
-        seq = 'CGG' + 'A'*20 + 'T'*20 + 'CCGG' + 'T'*25 + 'GG'
+        seq = Seq('CGG' + 'A'*20 + 'T'*20 + 'CCGG' + 'T'*25 + 'GG', alphabet = generic_dna)
 
-        cor = sorted(['T'*19 + 'C',
-                      'T'*20,
-                      'A'*19 + 'C'
+        cor = sorted([Seq('U'*19 + 'C', alphabet = generic_rna),
+                      Seq('U'*20, alphabet = generic_rna),
+                      Seq('A'*19 + 'C', alphabet = generic_rna)
                       ])
 
-        res = utils.extract_possible_targets(SeqRecord(Seq(seq)))
+        res = utils.extract_possible_targets(SeqRecord(seq))
 
         assert cor == res
 
