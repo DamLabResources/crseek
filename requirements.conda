@@ -7,6 +7,6 @@ matplotlib=2.0.2
 seaborn=0.7.1
 scipy=1.0.0
 scikit-learn=0.19.1
-pysam=0.12
+pysam=0.12.0
 pyyaml=3.12
 bedtools=2.26.0
