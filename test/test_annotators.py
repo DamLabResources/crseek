@@ -27,7 +27,7 @@ class TestAnnotateSingle(object):
 
         mod = estimators.CFDEstimator.build_pipeline()
 
-        seqR = annotators.annotate_grna_binding(spacer, seqR, mod)
+        seqR = annotators.annotate_grna_binding(spacer, seqR, mod, exhaustive = True)
 
         assert len(seqR.features) == 1
         feat = seqR.features[0]
@@ -48,7 +48,7 @@ class TestAnnotateSingle(object):
 
         mod = build_estimator()
 
-        seqR = annotators.annotate_grna_binding(spacer, seqR, mod, exhaustive = True)
+        seqR = annotators.annotate_grna_binding(spacer, seqR, mod, exhaustive = False)
 
         assert len(seqR.features) == 1
         feat = seqR.features[0]
@@ -68,7 +68,7 @@ class TestAnnotateSingle(object):
 
         mod = build_estimator()
 
-        seqR = annotators.annotate_grna_binding(spacer, seqR, mod,
+        seqR = annotators.annotate_grna_binding(spacer, seqR, mod, exhaustive = True,
                                                 extra_qualifiers = {'Something': 'here'})
 
         assert len(seqR.features) == 1
@@ -86,7 +86,7 @@ class TestAnnotateSingle(object):
                          id = 'CheckSeq')
         mod = build_estimator()
 
-        seqR = annotators.annotate_grna_binding(spacer, seqR, mod)
+        seqR = annotators.annotate_grna_binding(spacer, seqR, mod, exhaustive = True)
 
         assert len(seqR.features) == 1
         feat = seqR.features[0]

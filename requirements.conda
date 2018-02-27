@@ -10,3 +10,5 @@ scikit-learn=0.19.1
 pysam
 pyyaml=3.12
 bedtools=2.26.0
+pytest-cov
+coveralls
