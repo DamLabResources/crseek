@@ -2,21 +2,22 @@ import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator
 from Bio.Seq import Seq, reverse_complement
+from Bio.SeqRecord import SeqRecord
+from Bio import Alphabet
 import interlap
+from itertools import cycle
+from crisprtree.preprocessing import locate_hits_in_array
+from crisprtree import exceptions
 
 
-
-
-
-def check_grna_across_seqs(grna, seqs, estimator, index=None):
-
+def check_spacer_across_loci(spacer, loci, estimator, index = None):
     """ Simple utility function to check all sequences against a single gRNA
 
     Parameters
     ----------
-    grna : str or Seq
+    spacer : str or Seq
         The gRNA to scan across all sequences.
-    seqs : list or pd.Series
+    loci : iter[SeqRecord]
         Iterable of sequences to check
     estimator : BaseEstimator
         The estimator to use for evaluation. The estimator should already be *fit*
@@ -30,68 +31,20 @@ def check_grna_across_seqs(grna, seqs, estimator, index=None):
 
     """
 
-    checks = []
-    seq_info = []
+    X = np.array(list(zip(cycle([spacer]), loci)))
+    if type(loci) == pd.Series:
+        index = loci.index
 
-    assert len(seqs) > 0, 'No sequences passed!'
+    if index is None:
+        index = [locus.id + ' ' + locus.description for locus in loci]
 
-    if type(seqs) == type(pd.Series()):
-        it = zip(seqs.index, seqs.values)
-        index_name = seqs.index.name
-    else:
-        it = enumerate(seqs)
-        index_name = 'SeqNum'
+    resX, resL, resS = locate_hits_in_array(X, estimator=estimator)
 
-    if type(grna) is Seq:
-        grna = str(grna)
-
-    for seq_key, seq in it:
-        if len(seq) < 23:
-            # deal with short sequences gracefully
-            checks.append((grna, 'X'*23))
-            seq_info.append({'Index': seq_key,
-                             'Position': -1,
-                             'Strand': ''})
-            continue
-
-        rseq = reverse_complement(seq)
-        for n in range(len(seq)-23):
-            if all(l.upper() in {'A', 'C', 'G', 'T'} for l in str(seq[n:n+23])):
-                checks.append((grna, str(seq[n:n+23])))
-                seq_info.append({'Index': seq_key,
-                                 'Position': n,
-                                 'Strand': '+'})
-
-            if all(l.upper() in {'A', 'C', 'G', 'T'} for l in str(rseq[n:n+23])):
-                checks.append((grna, str(rseq[n:n+23])))
-                seq_info.append({'Index': seq_key,
-                                 'Position': n,
-                                 'Strand': '-'})
-
-    res = estimator.predict_proba(np.array(checks))
-
-    targets = [targ for grna, targ in checks]
-
-    df = pd.DataFrame(seq_info)
-    df['Target'] = targets
-    df['Value'] = res
-
-
-    def fix_agg(rows):
-        idx = rows['Value'].idxmax()
-        return rows.ix[idx]
-
-
-
-
-
-
-    out = df.groupby('Index')[['Value', 'Target', 'Position', 'Strand']].agg(fix_agg)
-    out.index.name = index_name
-
-    if index is not None:
-        out.index = index
-
+    out = pd.concat([pd.DataFrame(resL, columns = ['left', 'strand']),
+                     pd.DataFrame(resX, columns = ['spacer', 'target'])],
+                    axis=1)
+    out['score'] = resS
+    out.index = index
 
     return out
 
@@ -131,17 +84,17 @@ def _iterate_grna_seq_overlaps(seq_df, grna_df, overlap):
         yield row, seq_df.loc[index, :]
 
 
-def positional_aggregation(seq_df, grna_df, estimator, overlap = 20):
+def positional_aggregation(loci_df, spacer_df, estimator, overlap = 20):
     """ Utility function to aggregate matching results in a position-specific manner.
 
     Parameters
     ----------
-    seq_df : pd.DataFrame
+    loci_df : pd.DataFrame
         Must contain 3 columns: Seq, Start, Stop. These must contain a Bio.Seq object, and two integers indicating
         the start and stop positions of the sequence on the reference chromosome
 
-    grna_df : pd.DataFrame
-        Must contain 2 columns: gRNA, Start, Stop. These must contain a Bio.Seq object, and two integers indicating
+    spacer_df : pd.DataFrame
+        Must contain 2 columns: spacer, Start, Stop. These must contain a Bio.Seq object, and two integers indicating
         the start and stop positions of the gRNA on the reference chromosome
 
     estimator : BaseEstimator
@@ -156,27 +109,32 @@ def positional_aggregation(seq_df, grna_df, estimator, overlap = 20):
 
     # Simple type checking
 
-    assert _check_columns(seq_df, ['Seq', 'Start', 'Stop']), 'seq_df must contain [Seq, Start, Stop] columns'
-    assert _check_columns(grna_df, ['gRNA', 'Start', 'Stop']), 'seq_df must contain [gRNA, Start, Stop] columns'
+    assert _check_columns(loci_df, ['Seq', 'Start', 'Stop']), 'seq_df must contain [Seq, Start, Stop] columns'
+    assert _check_columns(spacer_df, ['spacer', 'Start', 'Stop']), 'seq_df must contain [spacer, Start, Stop] columns'
 
-    is_seq = seq_df['Seq'].map(lambda x: type(x) is Seq)
-    assert is_seq.all(), 'All items in the Seq column must be Bio.Seq objects'
-
-    is_seq = grna_df['gRNA'].map(lambda x: type(x) is Seq)
-    assert is_seq.all(), 'All items in the gRNA column must be Bio.Seq objects'
+    _ = [exceptions._check_seq_alphabet(seq, base_alphabet = Alphabet.RNAAlphabet) for seq in spacer_df['spacer'].values]
+    _ = [exceptions._check_seq_alphabet(seqR.seq, base_alphabet = Alphabet.DNAAlphabet) for seqR in loci_df['Seq'].values]
 
     all_hits = []
-    for grna_row, seq_hits in _iterate_grna_seq_overlaps(seq_df, grna_df, overlap):
+    for grna_row, seq_hits in _iterate_grna_seq_overlaps(loci_df, spacer_df, overlap):
 
-        all_hits.append(check_grna_across_seqs(grna_row['gRNA'], seq_hits['Seq'], estimator))
-        for col in grna_row.index:
-            if col not in {'Start', 'Stop', 'gRNA'}:
-                all_hits[-1][col] = grna_row[col]
-        all_hits[-1]['gRNA'] = str(grna_row['gRNA'])
+        name_index = [row['Seq'].id + ' ' + row['Seq'].description for _, row in seq_hits.iterrows()]
+        all_hits.append(check_spacer_across_loci(grna_row['spacer'],
+                                                 seq_hits['Seq'].values,
+                                                 estimator,
+                                                 index = seq_hits.index))
 
-        for col in seq_hits.columns:
-            if col not in {'Start', 'Stop', 'Seq'}:
-                all_hits[-1].loc[seq_hits.index, col] = seq_hits.loc[seq_hits.index, col]
+
+        if len(all_hits[-1].index) > 0:
+            for col in grna_row.index:
+                if col not in {'Start', 'Stop', 'spacer'}:
+                    all_hits[-1][col] = grna_row[col]
+            all_hits[-1]['spacer'] = [grna_row['spacer']]*len(all_hits[-1].index)
+
+            for col in seq_hits.columns:
+                if col not in {'Start', 'Stop', 'Seq'}:
+                    all_hits[-1].loc[seq_hits.index, col] = seq_hits.loc[seq_hits.index, col]
+
 
     try:
         return pd.concat(all_hits, axis=0, ignore_index=True)

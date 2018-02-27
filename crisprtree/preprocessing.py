@@ -126,26 +126,34 @@ def locate_hits_in_array(X, estimator, mismatches=6):
     loc : np.array
         The position in each array of the maximal target hit. An Nx2 array in
         which the first column is the start and the second is the strand.
+    scores: np.array
+        The score returned by the estimator for this binding.
 
     """
 
     def pick_best(df):
-        best = df['score'].idxmin()
+        best = df['score'].idxmax()
         return df.loc[best, :]
 
     seqs = list(X[:,1])
     seq_ids = [s.id + ' ' + s.description for s in X[:,1]]
-    grnas = np.unique(X[:, 0])
-    result = utils.cas_offinder(grnas, mismatches, locus = seqs)
-    result['score'] = estimator.predict_proba(result.values)
+    spacers = np.unique(X[:, 0])
+
+    result = utils.cas_offinder(spacers, mismatches, locus = seqs)
+
+    if len(result.index) > 0:
+        result['score'] = estimator.predict_proba(result.values)
+    else:
+        result['score'] = []
 
     best_hits = result.reset_index().groupby('name').agg(pick_best)
     best_hits = best_hits.reindex(seq_ids)
 
     X = best_hits[['spacer', 'target']]
     loc = best_hits[['left', 'strand']]
+    scores = best_hits['score']
 
-    return X.values, loc.values
+    return X.values, loc.values, scores.values
 
 
 def check_proto_target_input(X):

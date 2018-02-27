@@ -278,7 +278,7 @@ class TestLocate(object):
         X = np.array(list(zip(spacers, locus)))
         estimator = CFDEstimator.build_pipeline()
 
-        nX, loc = locate_hits_in_array(X, estimator, mismatches=6)
+        nX, loc, _ = locate_hits_in_array(X, estimator, mismatches=6)
 
         assert nX.shape == (4, 2)
         assert loc.shape == (4, 2)
