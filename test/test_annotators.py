@@ -24,7 +24,7 @@ class TestAnnotateSingle(object):
                              alphabet = Alphabet.generic_dna),
                          id = 'CheckSeq')
 
-        mod = build_estimator()
+        mod = estimators.CFDEstimator.build_pipeline()
 
         seqR = annotators.annotate_grna_binding(spacer, seqR, mod)
 

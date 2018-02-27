@@ -57,7 +57,7 @@ def annotate_grna_binding(spacer, seq_record, estimator, extra_qualifiers=None,
     else:
         tiles = cas_offinder([spacer], mismatch_tolerance, locus = [seq_record])
 
-    pred = estimator.predict(tiles.values)
+    pred = estimator.predict(tiles[['spacer', 'target']].values)
     pred_ser = pd.Series(pred, index=tiles.index)
 
     hits = pred_ser[pred_ser]
