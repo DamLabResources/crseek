@@ -2,13 +2,11 @@
 CRISPRTree
 =============================
 
-.. image:: https://badge.fury.io/py/crisprtree.png
-    :target: http://badge.fury.io/py/crisprtree
+.. image:: https://travis-ci.org/DamLabResources/crisprtree.png?branch=master
+    :target: https://travis-ci.org/DamLabResources/crisprtree
 
-.. image:: https://travis-ci.org/judowill/crisprtree.png?branch=master
-    :target: https://travis-ci.org/judowill/crisprtree
-
-Deploy static HTML sites to S3 with the simple 'alotofeffort' command.
+.. image:: https://coveralls.io/repos/github/DamLabResources/crisprtree/badge.svg?branch=master)
+    :target: https://coveralls.io/github/DamLabResources/crisprtree?branch=master
 
 
 Features
