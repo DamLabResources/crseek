@@ -198,7 +198,6 @@ def make_random_seq_restrict(bp):
     return ''.join(np.random.choice(list('AT'), size = bp))
 
 
-
 @pytest.mark.skipif(utils._missing_casoffinder(), reason="Need CasOff installed")
 class TestCasOff(object):
 

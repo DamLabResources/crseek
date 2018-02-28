@@ -1,6 +1,7 @@
 from crisprtree import preprocessing
 from crisprtree import estimators
 from crisprtree import evaluators
+from crisprtree import utils
 from test.test_preprocessing import make_random_seq
 from sklearn.pipeline import Pipeline
 from Bio.Seq import reverse_complement, Seq
@@ -30,6 +31,7 @@ def do_rev_comp(seqs):
 
     return ndata
 
+@pytest.mark.skipif(utils._missing_casoffinder(), reason="Need CasOff installed")
 class TestCheckgRNA(object):
 
     def get_basic_info(self):
@@ -179,6 +181,7 @@ class TestCheckgRNA(object):
         assert_index_equal(corr.index, res.index)
 
 
+@pytest.mark.skipif(utils._missing_casoffinder(), reason="Need CasOff installed")
 class TestPositionalAgg(object):
 
     def make_basic_dfs(self):
