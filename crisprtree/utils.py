@@ -95,7 +95,7 @@ def extract_possible_targets(seq_record, pams = ('NGG',), both_strands = True):
 
     """
 
-    st_seq = str(seq_record.seq)
+    st_seq = str(seq_record.seq.upper())
 
     found = set()
     for pam in pams:
@@ -132,7 +132,7 @@ def tile_seqrecord(spacer, seq_record):
     exceptions._check_seq_alphabet(seq_record.seq, DNAAlphabet)
 
     tiles = []
-    str_seq = str(seq_record.seq)
+    str_seq = str(seq_record.seq.upper())
     for n in range(len(str_seq)-23):
         tiles.append({'name': seq_record.id,
                       'left': n,
@@ -152,6 +152,22 @@ def tile_seqrecord(spacer, seq_record):
 
 def _run_casoffinder(input_path, out_path, openci_devices):
 
+    """
+
+    Parameters
+    ----------
+    input_path : file
+        An input file that follows the input format for cas-offinder
+    out_path : file
+        An output file from cas-offinder
+    openci_devices :
+        A letter for openci usage. ['C'|'G'] for CPU or GPU, a numeric order following the device letter may apply
+        e.g. 'C0' or 'G1'
+
+    Returns
+    -------
+    None
+    """
     tdict = {'ifile': input_path,
              'ofile': out_path,
              'dev': openci_devices}
