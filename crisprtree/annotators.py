@@ -11,7 +11,7 @@ from crisprtree import exceptions
 
 
 def annotate_grna_binding(spacer, seq_record, estimator, extra_qualifiers=None,
-                          exhaustive = False, mismatch_tolerance = 6):
+                          exhaustive = False, mismatch_tolerance = 6, openci_devices = 'G0'):
     """ In-place annotation of gRNA binding location.
     Parameters
     ----------
@@ -28,6 +28,8 @@ def annotate_grna_binding(spacer, seq_record, estimator, extra_qualifiers=None,
         If False then a mismatch search is performed first.
     mismatch_tolerance : int
         If using a mismatch search, the tolerance.
+    openci_devices : str
+        Formatted string of device-IDs acceptable to cas-offinder
 
     Returns
     -------
@@ -55,7 +57,8 @@ def annotate_grna_binding(spacer, seq_record, estimator, extra_qualifiers=None,
     if exhaustive:
         tiles = tile_seqrecord(spacer, seq_record)
     else:
-        tiles = cas_offinder([spacer], mismatch_tolerance, locus = [seq_record])
+        tiles = cas_offinder([spacer], mismatch_tolerance, locus = [seq_record],
+                             openci_devices = openci_devices)
 
     pred = estimator.predict(tiles[['spacer', 'target']].values)
     pred_ser = pd.Series(pred, index=tiles.index)

@@ -258,10 +258,10 @@ def make_random_seq(bp):
     return ''.join(np.random.choice(list('ACGT'), size = bp))
 
 
-@pytest.mark.skipif(utils._missing_casoffinder(), reason="Need CasOff installed")
 class TestLocate(object):
 
-    def test_basic(self):
+
+    def make_basic(self):
 
         #prevent Heisenbugs
         np.random.seed(0)
@@ -270,23 +270,15 @@ class TestLocate(object):
                 make_random_seq(12) + 'TTTT' + 'C'*19+'T' + 'CGG' + 'TTTT' + make_random_seq(50),
                 make_random_seq(75),
                 make_random_seq(25) + 'TTTT' + 'T' + 'A'*19 + 'TGG' + 'TTTT' + make_random_seq(50)]
-        locus = [SeqRecord(Seq(s, alphabet = generic_rna), id = str(n)) for n, s in enumerate(locus)]
+        locus = [SeqRecord(Seq(s, alphabet = generic_dna), id = str(n)) for n, s in enumerate(locus)]
 
         spacers = [Seq('A'*20, alphabet = generic_rna),
                    Seq('C'*19+'U', alphabet = generic_rna),
                    Seq('C'*19+'U', alphabet = generic_rna),
                    Seq('A'*20, alphabet = generic_rna)]
 
-        X = np.array(list(zip(spacers, locus)))
-        estimator = CFDEstimator.build_pipeline()
-
-        nX, loc, _ = locate_hits_in_array(X, estimator, mismatches=6)
-
-        assert nX.shape == (4, 2)
-        assert loc.shape == (4, 2)
-
-        np.testing.assert_array_equal([54, 16, np.nan, 29], loc[:,0])
-        np.testing.assert_array_equal([1, 1, np.nan, 1], loc[:,1])
+        cor_pos = [54, 16, np.nan, 29]
+        cor_strand = [1, 1, np.nan, 1]
 
         cor_target = [Seq('A'*20 + 'CGG', alphabet = generic_dna),
                       Seq('C'*19+'T' + 'CGG', alphabet = generic_dna),
@@ -298,6 +290,24 @@ class TestLocate(object):
                       np.nan,
                       Seq('A'*20, alphabet = generic_rna)]
 
+        return spacers, locus, cor_target, cor_spacer, cor_pos, cor_strand
+
+    @pytest.mark.skipif(utils._missing_casoffinder(), reason="Need CasOff installed")
+    def test_basic(self):
+
+        spacers, locus, cor_target, cor_spacer, cor_pos, cor_strand = self.make_basic()
+
+        X = np.array(list(zip(spacers, locus)))
+        estimator = CFDEstimator.build_pipeline()
+
+        nX, loc, _ = locate_hits_in_array(X, estimator, mismatches=6)
+
+        assert nX.shape == (4, 2)
+        assert loc.shape == (4, 2)
+
+        np.testing.assert_array_equal(cor_pos, loc[:,0])
+        np.testing.assert_array_equal(cor_strand, loc[:,1])
+
         cX = pd.DataFrame(list(zip(cor_spacer, cor_target))).values
 
         mask = np.array([True, True, False, True])
@@ -305,3 +315,24 @@ class TestLocate(object):
 
         assert np.isnan(cX[2, 0])
         assert np.isnan(cX[2, 1])
+
+    def test_exhaustive(self):
+
+        spacers, locus, cor_target, cor_spacer, cor_pos, cor_strand = self.make_basic()
+
+        X = np.array(list(zip(spacers, locus)))
+        estimator = CFDEstimator.build_pipeline()
+
+        nX, loc, _ = locate_hits_in_array(X, estimator, exhaustive=True)
+
+        assert nX.shape == (4, 2)
+        assert loc.shape == (4, 2)
+
+        mask = np.array([0, 1, 3])
+
+        np.testing.assert_array_equal(np.array(cor_pos)[mask], loc[mask,0])
+        np.testing.assert_array_equal(np.array(cor_strand)[mask], loc[mask,1])
+
+        cX = pd.DataFrame(list(zip(cor_spacer, cor_target))).values
+
+        np.testing.assert_array_equal(cX[mask, :], nX[mask, :])

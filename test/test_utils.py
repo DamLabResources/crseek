@@ -146,7 +146,7 @@ class TestTiling(object):
         assert (res['spacer'] == grna).all()
 
         for (name, strand, start), row in res.iterrows():
-            assert name == 'checking'
+            assert name == utils._make_record_key(seqR)
             if strand == 1:
                 assert str(row['target']) == bseq[start:start+23]
             else:

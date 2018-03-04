@@ -1,5 +1,6 @@
 from sklearn.base import BaseEstimator
 import numpy as np
+import pandas as pd
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio.Alphabet import generic_dna, generic_rna, RNAAlphabet, DNAAlphabet
@@ -101,7 +102,7 @@ class OneHotTransformer(BaseEstimator):
         return np.array(encoded)
 
 
-def locate_hits_in_array(X, estimator, mismatches=6):
+def locate_hits_in_array(X, estimator, exhaustive = False, mismatches=6, openci_devices = 'G0'):
     """ Utilizes cas-offinder to find the likeliest hit of the gRNA in a long
     sequence. It uses the provided estimator to rank each potential hit.
 
@@ -114,9 +115,13 @@ def locate_hits_in_array(X, estimator, mismatches=6):
     estimator : SequenceBase
         Estimator to use when scoring potential hits
 
-    mismatches : int
-        Number of mismatches to allow when performing cas-offinder search
-
+    exhaustive : bool
+        If True then all positions within the seq_record are checked.
+        If False then a mismatch search is performed first.
+    mismatch_tolerance : int
+        If using a mismatch search, the tolerance.
+    openci_devices : str
+        Formatted string of device-IDs acceptable to cas-offinder
     Returns
     -------
 
@@ -136,10 +141,16 @@ def locate_hits_in_array(X, estimator, mismatches=6):
         return df.loc[best, :]
 
     seqs = list(X[:,1])
-    seq_ids = [s.id + ' ' + s.description for s in X[:,1]]
+    seq_ids = [utils._make_record_key(s) for s in X[:,1]]
     spacers = np.unique(X[:, 0])
 
-    result = utils.cas_offinder(spacers, mismatches, locus = seqs)
+
+    if exhaustive == False:
+        result = utils.cas_offinder(spacers, mismatches, locus = seqs,
+                                    openci_devices=openci_devices)
+    else:
+        result = pd.concat([utils.tile_seqrecord(spacer, seq) for seq in seqs for spacer in spacers],
+                           axis = 0)
 
     if len(result.index) > 0:
         result['score'] = estimator.predict_proba(result.values)

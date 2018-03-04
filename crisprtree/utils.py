@@ -77,7 +77,6 @@ def smrt_seq_convert(outfmt, seqs, default_phred=None,
         yield possible_formats[outfmt](seq_rec)
 
 
-
 def extract_possible_targets(seq_record, pams = ('NGG',), both_strands = True):
     """
     Parameters
@@ -118,6 +117,20 @@ def extract_possible_targets(seq_record, pams = ('NGG',), both_strands = True):
     return sorted(f for f in found if len(f) == 20)
 
 
+def _make_record_key(seqR):
+    """
+    Parameters
+    ----------
+    seqR : SeqRecord
+
+    Returns
+    -------
+    str
+    """
+
+    return seqR.id + ' ' + seqR.description
+
+
 def tile_seqrecord(spacer, seq_record):
     """ Simple utility function to convert a sequence and gRNA into something
     the preprocessing tools can deal with.
@@ -141,12 +154,12 @@ def tile_seqrecord(spacer, seq_record):
     tiles = []
     str_seq = str(seq_record.seq.upper())
     for n in range(len(str_seq)-23):
-        tiles.append({'name': seq_record.id,
+        tiles.append({'name': _make_record_key(seq_record),
                       'left': n,
                       'strand': 1,
                       'spacer': spacer,
                       'target': Seq(str_seq[n:n+23], alphabet = generic_dna)})
-        tiles.append({'name': seq_record.id,
+        tiles.append({'name': _make_record_key(seq_record),
                       'left': n,
                       'strand': -1,
                       'spacer': spacer,
