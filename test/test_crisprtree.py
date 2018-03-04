@@ -6,7 +6,6 @@ from crisprtree import crisprtree
 
 
 class TestCrisprtree(object):
-
     @classmethod
     def setup_class(cls):
         pass

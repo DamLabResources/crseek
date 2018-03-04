@@ -1,17 +1,18 @@
 from __future__ import division
-from crisprtree import preprocessing, estimators
-import pytest
-import numpy as np
+
+import os
 from itertools import cycle
 from tempfile import NamedTemporaryFile
-import os
-import yaml
-from sklearn.pipeline import Pipeline
-from sklearn.base import BaseEstimator
 
-from Bio.Seq import Seq
-from Bio.SeqRecord import SeqRecord
+import numpy as np
+import pytest
+import yaml
 from Bio import Alphabet
+from Bio.Seq import Seq
+from sklearn.pipeline import Pipeline
+
+from crisprtree import preprocessing
+from crisprtree import estimators
 
 
 def make_match_array_from_seqs(spacer, seqs):
@@ -34,6 +35,7 @@ def make_match_array_from_seqs(spacer, seqs):
 
     seq_array = np.array(list(zip(cycle([spacer]), seqs)))
     return preprocessing.MatchingTransformer().transform(seq_array)
+
 
 def make_onehot_array_from_seqs(spacer, seqs):
     """
@@ -58,12 +60,11 @@ def make_onehot_array_from_seqs(spacer, seqs):
 
 
 class BaseChecker(object):
-
-    hits = [Seq('A'*20 + 'AGG', alphabet = Alphabet.generic_dna),          # Perfect hit
-            Seq('A'*19 + 'T' + 'AGG', alphabet = Alphabet.generic_dna),    # One miss in seed
-            Seq('T' + 'A'*19 + 'AGG', alphabet = Alphabet.generic_dna),   # One miss outside seed
-            Seq('TTT' + 'A'*17 + 'AGG', alphabet = Alphabet.generic_dna),  # Three miss outside seed
-            Seq('A'*20 + 'ATG', alphabet = Alphabet.generic_dna)           # No PAM
+    hits = [Seq('A' * 20 + 'AGG', alphabet=Alphabet.generic_dna),  # Perfect hit
+            Seq('A' * 19 + 'T' + 'AGG', alphabet=Alphabet.generic_dna),  # One miss in seed
+            Seq('T' + 'A' * 19 + 'AGG', alphabet=Alphabet.generic_dna),  # One miss outside seed
+            Seq('TTT' + 'A' * 17 + 'AGG', alphabet=Alphabet.generic_dna),  # Three miss outside seed
+            Seq('A' * 20 + 'ATG', alphabet=Alphabet.generic_dna)  # No PAM
             ]
     expected = [0, 0, 0, 0, 0]
     prob = None
@@ -82,7 +83,7 @@ class BaseChecker(object):
             self.estimator.predict(check)
 
     def test_basic_predict(self):
-        spacer = Seq('A'*20, alphabet = Alphabet.generic_rna)
+        spacer = Seq('A' * 20, alphabet=Alphabet.generic_rna)
 
         if self.estimator is None:
             raise NotImplementedError
@@ -95,7 +96,7 @@ class BaseChecker(object):
     def test_predict_proba(self):
 
         if self.prob is not None:
-            spacer = Seq('A'*20, alphabet = Alphabet.generic_rna)
+            spacer = Seq('A' * 20, alphabet=Alphabet.generic_rna)
 
             if self.estimator is None:
                 raise NotImplementedError
@@ -108,7 +109,7 @@ class BaseChecker(object):
     def test_change_cutoff(self):
 
         if self.prob is not None:
-            spacer = Seq('A'*20, alphabet = Alphabet.generic_rna)
+            spacer = Seq('A' * 20, alphabet=Alphabet.generic_rna)
 
             if self.estimator is None:
                 raise NotImplementedError
@@ -117,18 +118,18 @@ class BaseChecker(object):
 
             self.estimator.cutoff = 0.2
             res = self.estimator.predict(match_array)
-            np.testing.assert_array_equal(res, np.array(self.prob)>0.2)
+            np.testing.assert_array_equal(res, np.array(self.prob) > 0.2)
 
             self.estimator.cutoff = 0.5
             res = self.estimator.predict(match_array)
-            np.testing.assert_array_equal(res, np.array(self.prob)>0.5)
+            np.testing.assert_array_equal(res, np.array(self.prob) > 0.5)
 
             self.estimator.cutoff = 0.8
             res = self.estimator.predict(match_array)
-            np.testing.assert_array_equal(res, np.array(self.prob)>0.8)
+            np.testing.assert_array_equal(res, np.array(self.prob) > 0.8)
 
     def test_build_pipeline(self):
-        spacer = Seq('A'*20, alphabet = Alphabet.generic_rna)
+        spacer = Seq('A' * 20, alphabet=Alphabet.generic_rna)
 
         if self.pipeline is None:
             raise NotImplementedError
@@ -140,29 +141,26 @@ class BaseChecker(object):
 
 
 class TestMismatchEstimator(BaseChecker):
-
     expected = [True, False, True, False, False]
     prob = None
 
-    estimator = estimators.MismatchEstimator(seed_len = 4, miss_seed = 0,
-                                             miss_tail = 2, pam = 'NGG')
-    pipeline = estimators.MismatchEstimator.build_pipeline(seed_len = 4,
-                                                           miss_seed = 0,
-                                                           miss_tail = 2,
-                                                           pam = 'NGG')
-    def test_init(self):
+    estimator = estimators.MismatchEstimator(seed_len=4, miss_seed=0,
+                                             miss_tail=2, pam='NGG')
+    pipeline = estimators.MismatchEstimator.build_pipeline(seed_len=4,
+                                                           miss_seed=0,
+                                                           miss_tail=2,
+                                                           pam='NGG')
 
+    def test_init(self):
         mod = estimators.MismatchEstimator()
 
     def test_check_pipeline(self):
-
         assert self.pipeline.matcher.seed_len == 4
         assert self.pipeline.matcher.miss_seed == 0
         assert self.pipeline.matcher.miss_tail == 2
         assert self.pipeline.matcher.pam == 'NGG'
 
     def test_load_yaml(self):
-
         d = {'Seed Length': 5,
              'Tail Length': 15,
              'Seed Misses': 1,
@@ -186,108 +184,103 @@ class TestMismatchEstimator(BaseChecker):
         assert mm_est.pam == 'NRG'
 
     def test_set_seed_length(self):
-
-        spacer = Seq('A'*20, alphabet = Alphabet.generic_rna)
-        hits = [Seq('A'*20 + 'AGG', alphabet = Alphabet.generic_dna),
-                Seq('A'*19 + 'T' + 'AGG', alphabet = Alphabet.generic_dna),
-                Seq('A'*18 + 'TA' + 'AGG', alphabet = Alphabet.generic_dna),
-                Seq('A'*17 + 'TAA' + 'AGG', alphabet = Alphabet.generic_dna),
-                Seq('A'*16 + 'TAAA' + 'AGG', alphabet = Alphabet.generic_dna)]
+        spacer = Seq('A' * 20, alphabet=Alphabet.generic_rna)
+        hits = [Seq('A' * 20 + 'AGG', alphabet=Alphabet.generic_dna),
+                Seq('A' * 19 + 'T' + 'AGG', alphabet=Alphabet.generic_dna),
+                Seq('A' * 18 + 'TA' + 'AGG', alphabet=Alphabet.generic_dna),
+                Seq('A' * 17 + 'TAA' + 'AGG', alphabet=Alphabet.generic_dna),
+                Seq('A' * 16 + 'TAAA' + 'AGG', alphabet=Alphabet.generic_dna)]
 
         match_array = self._make_match_array(spacer, hits)
 
-        mod = estimators.MismatchEstimator(seed_len = 2,
-                                           miss_seed = 0,
-                                           miss_tail = 2,
-                                           pam = 'NGG')
+        mod = estimators.MismatchEstimator(seed_len=2,
+                                           miss_seed=0,
+                                           miss_tail=2,
+                                           pam='NGG')
         res = mod.predict(match_array)
         expected = [True, False, False, True, True]
         np.testing.assert_array_equal(res, expected)
 
-        mod = estimators.MismatchEstimator(seed_len = 3,
-                                           miss_seed = 0,
-                                           miss_tail = 2,
-                                           pam = 'NGG')
+        mod = estimators.MismatchEstimator(seed_len=3,
+                                           miss_seed=0,
+                                           miss_tail=2,
+                                           pam='NGG')
         res = mod.predict(match_array)
         expected = [True, False, False, False, True]
         np.testing.assert_array_equal(res, expected)
 
     def test_set_seed_mismatch(self):
-
-        spacer = Seq('A'*20, alphabet = Alphabet.generic_rna)
-        hits = [Seq('A'*20 + 'AGG', alphabet = Alphabet.generic_dna),
-                Seq('A'*19 + 'T' + 'AGG', alphabet = Alphabet.generic_dna),
-                Seq('A'*18 + 'TT' + 'AGG', alphabet = Alphabet.generic_dna),
-                Seq('A'*17 + 'TTT' + 'AGG', alphabet = Alphabet.generic_dna)]
+        spacer = Seq('A' * 20, alphabet=Alphabet.generic_rna)
+        hits = [Seq('A' * 20 + 'AGG', alphabet=Alphabet.generic_dna),
+                Seq('A' * 19 + 'T' + 'AGG', alphabet=Alphabet.generic_dna),
+                Seq('A' * 18 + 'TT' + 'AGG', alphabet=Alphabet.generic_dna),
+                Seq('A' * 17 + 'TTT' + 'AGG', alphabet=Alphabet.generic_dna)]
 
         match_array = self._make_match_array(spacer, hits)
 
-        mod = estimators.MismatchEstimator(seed_len = 4,
-                                           miss_seed = 1,
-                                           miss_tail = 2,
-                                           pam = 'NGG')
+        mod = estimators.MismatchEstimator(seed_len=4,
+                                           miss_seed=1,
+                                           miss_tail=2,
+                                           pam='NGG')
         res = mod.predict(match_array)
         expected = [True, True, False, False]
         np.testing.assert_array_equal(res, expected)
 
-        mod = estimators.MismatchEstimator(seed_len = 4,
-                                           miss_seed = 2,
-                                           miss_tail = 2,
-                                           pam = 'NGG')
+        mod = estimators.MismatchEstimator(seed_len=4,
+                                           miss_seed=2,
+                                           miss_tail=2,
+                                           pam='NGG')
         res = mod.predict(match_array)
         expected = [True, True, True, False]
         np.testing.assert_array_equal(res, expected)
 
     def test_set_non_seed_mismatch(self):
-
-        spacer = Seq('A'*20, alphabet = Alphabet.generic_rna)
-        hits = [Seq('A'*20 + 'AGG', alphabet = Alphabet.generic_dna),
-                Seq('T' + 'A'*19 + 'AGG', alphabet = Alphabet.generic_dna),
-                Seq('TT' + 'A'*18 + 'AGG', alphabet = Alphabet.generic_dna),
-                Seq('TTT' + 'A'*17 + 'AGG', alphabet = Alphabet.generic_dna)]
+        spacer = Seq('A' * 20, alphabet=Alphabet.generic_rna)
+        hits = [Seq('A' * 20 + 'AGG', alphabet=Alphabet.generic_dna),
+                Seq('T' + 'A' * 19 + 'AGG', alphabet=Alphabet.generic_dna),
+                Seq('TT' + 'A' * 18 + 'AGG', alphabet=Alphabet.generic_dna),
+                Seq('TTT' + 'A' * 17 + 'AGG', alphabet=Alphabet.generic_dna)]
 
         match_array = make_match_array_from_seqs(spacer, hits)
 
-        mod = estimators.MismatchEstimator(seed_len = 4,
-                                           miss_seed = 0,
-                                           miss_tail = 2,
-                                           pam = 'NGG')
+        mod = estimators.MismatchEstimator(seed_len=4,
+                                           miss_seed=0,
+                                           miss_tail=2,
+                                           pam='NGG')
         res = mod.predict(match_array)
         expected = [True, True, True, False]
         np.testing.assert_array_equal(res, expected)
 
-        mod = estimators.MismatchEstimator(seed_len = 4,
-                                           miss_seed = 0,
-                                           miss_tail = 1,
-                                           pam = 'NGG')
+        mod = estimators.MismatchEstimator(seed_len=4,
+                                           miss_seed=0,
+                                           miss_tail=1,
+                                           pam='NGG')
         res = mod.predict(match_array)
         expected = [True, True, False, False]
         np.testing.assert_array_equal(res, expected)
 
 
 class TestMITestimator(BaseChecker):
-
-    hits = [Seq('A' * 20 + 'AGG', alphabet = Alphabet.generic_dna),
-            Seq('A'*19 + 'T' + 'CGG', alphabet = Alphabet.generic_dna),
-            Seq('T' + 'A' * 19 + 'GGG', alphabet = Alphabet.generic_dna),
-            Seq('TT' + 'A'*18 + 'GGG', alphabet = Alphabet.generic_dna),
-            Seq('A'*5 + 'TT' + 'A'*13 + 'GGG', alphabet = Alphabet.generic_dna)]
+    hits = [Seq('A' * 20 + 'AGG', alphabet=Alphabet.generic_dna),
+            Seq('A' * 19 + 'T' + 'CGG', alphabet=Alphabet.generic_dna),
+            Seq('T' + 'A' * 19 + 'GGG', alphabet=Alphabet.generic_dna),
+            Seq('TT' + 'A' * 18 + 'GGG', alphabet=Alphabet.generic_dna),
+            Seq('A' * 5 + 'TT' + 'A' * 13 + 'GGG', alphabet=Alphabet.generic_dna)]
     expected = [True, False, True, True, False]
     prob = [1.0, 0.417, 1, 1, 0.413]
     estimator = estimators.MITEstimator()
     pipeline = estimators.MITEstimator.build_pipeline()
 
     def test_requires_pam(self):
-
-        spacer = Seq('T' + 'A' * 19, alphabet = Alphabet.generic_rna)
-        hits = [Seq('A' * 20 + 'AGG', alphabet = Alphabet.generic_dna),
-                Seq('A'*19 + 'T' + 'CGG', alphabet = Alphabet.generic_dna),
-                Seq('T' + 'A' * 19 + 'GGG', alphabet = Alphabet.generic_dna),
-                Seq('A' * 20 + 'ATG', alphabet = Alphabet.generic_dna),]
+        spacer = Seq('T' + 'A' * 19, alphabet=Alphabet.generic_rna)
+        hits = [Seq('A' * 20 + 'AGG', alphabet=Alphabet.generic_dna),
+                Seq('A' * 19 + 'T' + 'CGG', alphabet=Alphabet.generic_dna),
+                Seq('T' + 'A' * 19 + 'GGG', alphabet=Alphabet.generic_dna),
+                Seq('A' * 20 + 'ATG', alphabet=Alphabet.generic_dna), ]
 
         match_array = make_match_array_from_seqs(spacer, hits)
 
-        mit_est = estimators.MITEstimator(cutoff = 0.05)
+        mit_est = estimators.MITEstimator(cutoff=0.05)
         mit_cut = mit_est.predict(match_array)
 
         cor_prob = [True, True, True, False]
@@ -296,12 +289,11 @@ class TestMITestimator(BaseChecker):
 
 
 class TestKineticEstimator(BaseChecker):
-
-    hits = [Seq('A' * 20 + 'AGG', alphabet = Alphabet.generic_dna),
-            Seq('A'*19 + 'T' + 'CGG', alphabet = Alphabet.generic_dna),
-            Seq('T' + 'A' * 19 + 'GGG', alphabet = Alphabet.generic_dna),
-            Seq('TT' + 'A'*18 + 'GGG', alphabet = Alphabet.generic_dna),
-            Seq('A'*5 + 'TT' + 'A'*13 + 'GGG', alphabet = Alphabet.generic_dna)]
+    hits = [Seq('A' * 20 + 'AGG', alphabet=Alphabet.generic_dna),
+            Seq('A' * 19 + 'T' + 'CGG', alphabet=Alphabet.generic_dna),
+            Seq('T' + 'A' * 19 + 'GGG', alphabet=Alphabet.generic_dna),
+            Seq('TT' + 'A' * 18 + 'GGG', alphabet=Alphabet.generic_dna),
+            Seq('A' * 5 + 'TT' + 'A' * 13 + 'GGG', alphabet=Alphabet.generic_dna)]
     expected = [True, False, True, True, True]
     prob = [1.0, 1.12701e-8, 0.7399, 0.5475, 0.5447311]
 
@@ -309,16 +301,15 @@ class TestKineticEstimator(BaseChecker):
     pipeline = estimators.KineticEstimator.build_pipeline()
 
     def test_requires_pam(self):
-
-        spacer = Seq('A' * 20, alphabet = Alphabet.generic_rna)
-        hits = [Seq('A' * 20 + 'AGG', alphabet = Alphabet.generic_dna),
-                Seq('A'*19 + 'T' + 'CGG', alphabet = Alphabet.generic_dna),
-                Seq('T' + 'A' * 19 + 'GGG', alphabet = Alphabet.generic_dna),
-                Seq('A' * 20 + 'ATG', alphabet = Alphabet.generic_dna),]
+        spacer = Seq('A' * 20, alphabet=Alphabet.generic_rna)
+        hits = [Seq('A' * 20 + 'AGG', alphabet=Alphabet.generic_dna),
+                Seq('A' * 19 + 'T' + 'CGG', alphabet=Alphabet.generic_dna),
+                Seq('T' + 'A' * 19 + 'GGG', alphabet=Alphabet.generic_dna),
+                Seq('A' * 20 + 'ATG', alphabet=Alphabet.generic_dna), ]
 
         match_array = make_match_array_from_seqs(spacer, hits)
 
-        est = estimators.KineticEstimator(cutoff = 0.50)
+        est = estimators.KineticEstimator(cutoff=0.50)
         cut = est.predict(match_array)
 
         cor_prob = [True, False, True, False]
@@ -327,15 +318,14 @@ class TestKineticEstimator(BaseChecker):
 
 
 class TestCFDEstimator(BaseChecker):
-
-    hits = [Seq('A' * 20 + 'AGG', alphabet = Alphabet.generic_dna),
-            Seq('A'*19 + 'T' + 'CGG', alphabet = Alphabet.generic_dna),
-            Seq('T' + 'A' * 19 + 'GGG', alphabet = Alphabet.generic_dna),
-            Seq('TT' + 'A'*18 + 'GGG', alphabet = Alphabet.generic_dna),
-            Seq('A'*5 + 'TT' + 'A'*13 + 'GGG', alphabet = Alphabet.generic_dna),
-            Seq('A' * 20 + 'GAG', alphabet = Alphabet.generic_dna)]
+    hits = [Seq('A' * 20 + 'AGG', alphabet=Alphabet.generic_dna),
+            Seq('A' * 19 + 'T' + 'CGG', alphabet=Alphabet.generic_dna),
+            Seq('T' + 'A' * 19 + 'GGG', alphabet=Alphabet.generic_dna),
+            Seq('TT' + 'A' * 18 + 'GGG', alphabet=Alphabet.generic_dna),
+            Seq('A' * 5 + 'TT' + 'A' * 13 + 'GGG', alphabet=Alphabet.generic_dna),
+            Seq('A' * 20 + 'GAG', alphabet=Alphabet.generic_dna)]
     expected = [True, False, True, False, False, False]
-    prob = [1.0, 0.6, 1.0, 0.727, 0.714*0.4375, 0.259]
+    prob = [1.0, 0.6, 1.0, 0.727, 0.714 * 0.4375, 0.259]
 
     estimator = estimators.CFDEstimator()
     pipeline = estimators.CFDEstimator.build_pipeline()
@@ -344,13 +334,6 @@ class TestCFDEstimator(BaseChecker):
         return make_onehot_array_from_seqs(spacer, hits)
 
     def test_loading(self):
-
         mod = estimators.CFDEstimator()
-        assert mod.score_vector.shape == (336, )
+        assert mod.score_vector.shape == (336,)
         np.testing.assert_approx_equal(mod.score_vector.sum(), 217.9692)
-
-
-
-
-
-

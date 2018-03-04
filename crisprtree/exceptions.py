@@ -1,5 +1,5 @@
-from Bio.Seq import Seq
 from Bio import Alphabet
+from Bio.Seq import Seq
 
 
 def _check_seq_alphabet(seq, base_alphabet=Alphabet.DNAAlphabet):

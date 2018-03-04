@@ -1,31 +1,26 @@
 from __future__ import division
+import os
+import numpy as np
+import yaml
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.pipeline import Pipeline
 from crisprtree.preprocessing import MatchingTransformer, OneHotTransformer
-from crisprtree.utils import cas_offinder, tile_seqrecord, smrt_seq_convert
-import numpy as np
-import os
-from Bio.Seq import Seq
-from Bio.SeqRecord import SeqRecord
-from Bio.SeqFeature import SeqFeature
-
-from tempfile import TemporaryDirectory, NamedTemporaryFile
-import yaml
 
 this_dir, this_filename = os.path.split(os.path.abspath(__file__))
-DATA_PATH = os.path.join(this_dir, '..',  "data")
+DATA_PATH = os.path.join(this_dir, '..', "data")
 
 
 class SequenceBase(BaseEstimator, ClassifierMixin):
-
     PAM = ''
 
     @staticmethod
     def build_pipeline(**kwargs):
         raise NotImplementedError
 
-    def annotate_sequence(self, spacer, seq, mismatch_tolerance = 4,
-                          exhaustive = False, extra_qualifiers=None):
+    def annotate_sequence(self, spacer, seq, mismatch_tolerance=4,
+                          exhaustive=False, extra_qualifiers=None):
         """
         Parameters
         ----------
@@ -50,9 +45,12 @@ class SequenceBase(BaseEstimator, ClassifierMixin):
         from crisprtree.annotators import annotate_grna_binding
 
         return annotate_grna_binding(spacer, seq, self,
-                                     exhaustive = exhaustive,
-                                     mismatch_tolerance = mismatch_tolerance,
-                                     extra_qualifiers = extra_qualifiers)
+                                     exhaustive=exhaustive,
+                                     mismatch_tolerance=mismatch_tolerance,
+                                     extra_qualifiers=extra_qualifiers)
+
+    def predict(self, X):
+        raise NotImplementedError
 
 
 class MismatchEstimator(SequenceBase):
@@ -61,9 +59,9 @@ class MismatchEstimator(SequenceBase):
     binding.
     """
 
-    def __init__(self, seed_len = 4, miss_seed = 0,
-                 miss_tail = 2, miss_non_seed = 3,
-                 require_pam = True, pam='NGG'):
+    def __init__(self, seed_len=4, miss_seed=0,
+                 miss_tail=2, miss_non_seed=3,
+                 require_pam=True, pam='NGG'):
         """
 
         Parameters
@@ -125,13 +123,13 @@ class MismatchEstimator(SequenceBase):
 
         """
 
-        pipe = Pipeline(steps = [('transform', MatchingTransformer()),
-                                 ('predict', MismatchEstimator(**kwargs))])
+        pipe = Pipeline(steps=[('transform', MatchingTransformer()),
+                               ('predict', MismatchEstimator(**kwargs))])
         pipe.matcher = pipe.steps[1][1]
 
         return pipe
 
-    def fit(self, X, y = None):
+    def fit(self, X, y=None):
         return self
 
     def predict(self, X):
@@ -149,7 +147,7 @@ class MismatchEstimator(SequenceBase):
         if X.shape[1] != 21:
             raise ValueError('Input array shape must be Nx21')
 
-        seed_miss = (X[:, -(self.seed_len+1):-1] == False).sum(axis=1)
+        seed_miss = (X[:, -(self.seed_len + 1):-1] == False).sum(axis=1)
         non_seed_miss = (X[:, :-(self.seed_len)] == False).sum(axis=1)
 
         binders = (seed_miss <= self.miss_seed) & (non_seed_miss <= self.miss_tail)
@@ -163,8 +161,7 @@ class MismatchEstimator(SequenceBase):
 
 
 class MITEstimator(SequenceBase):
-
-    def __init__(self, dampen = False, cutoff = 0.75, PAM = 'NGG'):
+    def __init__(self, dampen=False, cutoff=0.75, PAM='NGG'):
         """
         Parameters
         ----------
@@ -201,8 +198,8 @@ class MITEstimator(SequenceBase):
 
         """
 
-        pipe = Pipeline(steps = [('transform', MatchingTransformer()),
-                                 ('predict', MITEstimator(**kwargs))])
+        pipe = Pipeline(steps=[('transform', MatchingTransformer()),
+                               ('predict', MITEstimator(**kwargs))])
         return pipe
 
     def fit(self, X, y=None):
@@ -228,41 +225,40 @@ class MITEstimator(SequenceBase):
         if X.shape[1] != 21:
             raise ValueError('Input array shape must be Nx21')
 
-        s1 = (1-(X[:,:-1] == np.array([False]))*self.penalties).prod(axis=1)
+        s1 = (1 - (X[:, :-1] == np.array([False])) * self.penalties).prod(axis=1)
 
         mm = (X[:, :-1] == np.array([False])).sum(axis=1)
         n = mm.copy()
 
         def distance(x):
-            idx = np.where(x==False)
+            idx = np.where(x == False)
             if len(idx[0]) > 1:
                 return (idx[0][-1] - idx[0][0])
             else:
                 return 0
 
-        d = np.apply_along_axis(distance, axis=1, arr=X[: , :-1])
+        d = np.apply_along_axis(distance, axis=1, arr=X[:, :-1])
         with np.errstate(divide='ignore', invalid='ignore'):
-            d = np.true_divide(d,(n-1))
+            d = np.true_divide(d, (n - 1))
             d[d == np.inf] = 0
             d = np.nan_to_num(d)
 
-        D = 1 / ((19-d) / 19 * 4 + 1)
-        D[n<2] =1
+        D = 1 / ((19 - d) / 19 * 4 + 1)
+        D[n < 2] = 1
         S = s1
         psudoN = n.copy()
-        psudoN[n <1] =1
+        psudoN[n < 1] = 1
         if self.dampen:
-            S = s1*D*(np.array([1])/psudoN**2)
+            S = s1 * D * (np.array([1]) / psudoN ** 2)
 
-        S[mm==0]=1
+        S[mm == 0] = 1
         S *= X[:, -1].astype(float)
 
         return np.array(S)
 
 
 class CFDEstimator(SequenceBase):
-
-    def __init__(self, cutoff = 0.75, PAM = 'NGG'):
+    def __init__(self, cutoff=0.75, PAM='NGG'):
         """
         Parameters
         ----------
@@ -291,7 +287,6 @@ class CFDEstimator(SequenceBase):
 
         self.score_vector = np.array(vals)
 
-
     @staticmethod
     def build_pipeline(**kwargs):
         """ Utility function to build a pipeline.
@@ -306,19 +301,16 @@ class CFDEstimator(SequenceBase):
 
         """
 
-        pipe = Pipeline(steps = [('transform', OneHotTransformer()),
-                                 ('predict', CFDEstimator(**kwargs))])
+        pipe = Pipeline(steps=[('transform', OneHotTransformer()),
+                               ('predict', CFDEstimator(**kwargs))])
         return pipe
-
 
     def fit(self, X, y=None):
         return self
 
-
     def predict(self, X):
 
         return self.predict_proba(X) >= self.cutoff
-
 
     def predict_proba(self, X):
 
@@ -333,11 +325,9 @@ class CFDEstimator(SequenceBase):
         return probs
 
 
-
 class KineticEstimator(BaseEstimator):
-
-    def __init__(self, nseed = 11, dC = 1.8, Pmax = 0.74, variant = None,
-                 dI = None, npair = None, pam = 'NGG', cutoff = 0.5):
+    def __init__(self, nseed=11, dC=1.8, Pmax=0.74, variant=None,
+                 dI=None, npair=None, pam='NGG', cutoff=0.5):
         """
         Parameters
         ----------
@@ -393,7 +383,6 @@ class KineticEstimator(BaseEstimator):
 
         self.cutoff = cutoff
 
-
     @staticmethod
     def build_pipeline(**kwargs):
         """ Utility function to build a pipeline.
@@ -408,8 +397,8 @@ class KineticEstimator(BaseEstimator):
 
         """
 
-        pipe = Pipeline(steps = [('transform', MatchingTransformer()),
-                                 ('predict', KineticEstimator(**kwargs))])
+        pipe = Pipeline(steps=[('transform', MatchingTransformer()),
+                               ('predict', KineticEstimator(**kwargs))])
         return pipe
 
     def fit(self, X, y=None):
@@ -428,12 +417,12 @@ class KineticEstimator(BaseEstimator):
         # Klein model  : Position 0 => PAM proximal region
 
         pos = np.arange(20, 0, -1)
-        pclv = self.Pmax/(1+np.exp(-(pos-self.nseed)*self.dC))
+        pclv = self.Pmax / (1 + np.exp(-(pos - self.nseed) * self.dC))
 
-        vals = pclv*(X[:,:-1]==False)
+        vals = pclv * (X[:, :-1] == False)
 
         scores = np.ones_like(vals)
-        scores[X[:,:-1]==False] = vals[X[:,:-1]==False]
+        scores[X[:, :-1] == False] = vals[X[:, :-1] == False]
 
         probs = scores.prod(axis=1)
 

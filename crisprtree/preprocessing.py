@@ -1,11 +1,11 @@
-from sklearn.base import BaseEstimator
 import numpy as np
 import pandas as pd
-from Bio.Seq import Seq
-from Bio.SeqRecord import SeqRecord
 from Bio.Alphabet import generic_dna, generic_rna, RNAAlphabet, DNAAlphabet
-from crisprtree import utils
+from Bio.Seq import Seq
+from sklearn.base import BaseEstimator
+
 from crisprtree import exceptions
+from crisprtree import utils
 
 
 class MatchingTransformer(BaseEstimator):
@@ -102,7 +102,7 @@ class OneHotTransformer(BaseEstimator):
         return np.array(encoded)
 
 
-def locate_hits_in_array(X, estimator, exhaustive = False, mismatches=6, openci_devices = 'G0'):
+def locate_hits_in_array(X, estimator, exhaustive=False, mismatches=6, openci_devices='G0'):
     """ Utilizes cas-offinder to find the likeliest hit of the gRNA in a long
     sequence. It uses the provided estimator to rank each potential hit.
 
@@ -140,17 +140,16 @@ def locate_hits_in_array(X, estimator, exhaustive = False, mismatches=6, openci_
         best = df['score'].idxmax()
         return df.loc[best, :]
 
-    seqs = list(X[:,1])
-    seq_ids = [utils._make_record_key(s) for s in X[:,1]]
+    seqs = list(X[:, 1])
+    seq_ids = [utils._make_record_key(s) for s in X[:, 1]]
     spacers = np.unique(X[:, 0])
 
-
     if exhaustive == False:
-        result = utils.cas_offinder(spacers, mismatches, locus = seqs,
+        result = utils.cas_offinder(spacers, mismatches, locus=seqs,
                                     openci_devices=openci_devices)
     else:
         result = pd.concat([utils.tile_seqrecord(spacer, seq) for seq in seqs for spacer in spacers],
-                           axis = 0)
+                           axis=0)
 
     if len(result.index) > 0:
         result['score'] = estimator.predict_proba(result.values)
@@ -183,14 +182,14 @@ def check_proto_target_input(X):
 
     assert X.shape[1] == 2
 
-    spacer_lens = np.array([len(val) for val in X[:,0]])
-    target_lens = np.array([len(val) for val in X[:,1]])
+    spacer_lens = np.array([len(val) for val in X[:, 0]])
+    target_lens = np.array([len(val) for val in X[:, 1]])
 
     assert np.all(spacer_lens == 20)
     assert np.all(target_lens == 23)
 
-    _ = [exceptions._check_seq_alphabet(spacer, base_alphabet = RNAAlphabet) for spacer in X[:,0]]
-    _ = [exceptions._check_seq_alphabet(target, base_alphabet = DNAAlphabet) for target in X[:,1]]
+    _ = [exceptions._check_seq_alphabet(spacer, base_alphabet=RNAAlphabet) for spacer in X[:, 0]]
+    _ = [exceptions._check_seq_alphabet(target, base_alphabet=DNAAlphabet) for target in X[:, 1]]
 
     try:
         if any(spacer.alphabet != generic_rna for spacer in X[:, 0]):
@@ -248,9 +247,9 @@ def one_hot_encode_row(spacer, target):
 
     for m22 in seq_order:
         for m23 in seq_order:
-            features.append((target[21] == m22) and (target[22] == m23) )
+            features.append((target[21] == m22) and (target[22] == m23))
 
-    feats = np.array(features)==1
+    feats = np.array(features) == 1
     assert feats.sum() == 21, 'Nonstandard nucleotide detected.'
 
     return feats

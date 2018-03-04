@@ -1,24 +1,21 @@
-from Bio.SeqRecord import SeqRecord
-from Bio.Seq import Seq, reverse_complement, BiopythonWarning
-from Bio.Alphabet import generic_dna, generic_rna, _get_base_alphabet, RNAAlphabet, DNAAlphabet
-from Bio import SeqIO
-import pandas as pd
-import numpy as np
+import csv
+import os
 import shlex
-from io import StringIO, BytesIO
 import subprocess
+import warnings
+from io import BytesIO
 from subprocess import STDOUT, CalledProcessError, check_output
 from tempfile import TemporaryDirectory, NamedTemporaryFile
-from Bio.SeqUtils import nt_search
+
+import pandas as pd
+from Bio import SeqIO
 from Bio.Alphabet import generic_alphabet
+from Bio.Alphabet import generic_dna, RNAAlphabet, DNAAlphabet
+from Bio.Seq import Seq, reverse_complement, BiopythonWarning
+from Bio.SeqRecord import SeqRecord
+from Bio.SeqUtils import nt_search
 
 from crisprtree import exceptions
-
-import warnings
-
-import csv
-
-import os
 
 
 def smrt_seq_convert(outfmt, seqs, default_phred=None,
@@ -64,20 +61,20 @@ def smrt_seq_convert(outfmt, seqs, default_phred=None,
             seq_rec = SeqRecord(seq_obj, id='Seq-%i' % num)
         elif isinstance(seq_obj, str):
             seq_rec = SeqRecord(Seq(seq_obj, alphabet=alphabet),
-                                          id='Seq-%i' % num)
+                                id='Seq-%i' % num)
         elif isinstance(seq_obj, tuple):
             seq_rec = SeqRecord(Seq(seq_obj[1], alphabet=alphabet),
-                                          id=seq_obj[0])
+                                id=seq_obj[0])
         else:
             raise AssertionError("Don't understand obj of type: %s" % type(seq_obj))
 
         if default_phred and ('phred_quality' not in seq_rec.letter_annotations):
-            seq_rec.letter_annotations['phred_quality'] = [default_phred]*len(seq_rec)
+            seq_rec.letter_annotations['phred_quality'] = [default_phred] * len(seq_rec)
 
         yield possible_formats[outfmt](seq_rec)
 
 
-def extract_possible_targets(seq_record, pams = ('NGG',), both_strands = True):
+def extract_possible_targets(seq_record, pams=('NGG',), both_strands=True):
     """
     Parameters
     ----------
@@ -101,18 +98,18 @@ def extract_possible_targets(seq_record, pams = ('NGG',), both_strands = True):
     with warnings.catch_warnings():
         # We're using the new BioPython Seq comparison, don't need the
         # warning EVERY time.
-        warnings.simplefilter('ignore', category = BiopythonWarning)
+        warnings.simplefilter('ignore', category=BiopythonWarning)
 
         found = set()
         for pam in pams:
             for res in nt_search(st_seq, pam)[1:]:
-                found.add(Seq(st_seq[res-20:res], alphabet = generic_dna).transcribe())
+                found.add(Seq(st_seq[res - 20:res], alphabet=generic_dna).transcribe())
 
         if both_strands:
             rseq = reverse_complement(st_seq)
             for pam in pams:
                 for res in nt_search(rseq, pam)[1:]:
-                    found.add(Seq(rseq[res-20:res], alphabet = generic_dna).transcribe())
+                    found.add(Seq(rseq[res - 20:res], alphabet=generic_dna).transcribe())
 
     return sorted(f for f in found if len(f) == 20)
 
@@ -153,25 +150,25 @@ def tile_seqrecord(spacer, seq_record):
 
     tiles = []
     str_seq = str(seq_record.seq.upper())
-    for n in range(len(str_seq)-23):
+    for n in range(len(str_seq) - 23):
         tiles.append({'name': _make_record_key(seq_record),
                       'left': n,
                       'strand': 1,
                       'spacer': spacer,
-                      'target': Seq(str_seq[n:n+23], alphabet = generic_dna)})
+                      'target': Seq(str_seq[n:n + 23], alphabet=generic_dna)})
         tiles.append({'name': _make_record_key(seq_record),
                       'left': n,
                       'strand': -1,
                       'spacer': spacer,
-                      'target': Seq(reverse_complement(str_seq[n:n+23]),
-                                    alphabet = generic_dna)})
+                      'target': Seq(reverse_complement(str_seq[n:n + 23]),
+                                    alphabet=generic_dna)})
 
     df = pd.DataFrame(tiles)
 
     return df.groupby(['name', 'strand', 'left'])[['spacer', 'target']].first()
 
-def _run_casoffinder(input_path, out_path, openci_devices):
 
+def _run_casoffinder(input_path, out_path, openci_devices):
     """
 
     Parameters
@@ -203,7 +200,7 @@ def _run_casoffinder(input_path, out_path, openci_devices):
 
 def _build_cas_offinder_input_file(handle, spacers, fasta_direc,
                                    mismatches,
-                                   template = 'NNNNNNNNNNNNNNNNNNNNNRG'):
+                                   template='NNNNNNNNNNNNNNNNNNNNNRG'):
     """ Utility to build the input file template for cas-offinder
     Parameters
     ----------
@@ -229,10 +226,10 @@ def _build_cas_offinder_input_file(handle, spacers, fasta_direc,
         handle.write('%sNNN %i\n' % (spacer.back_transcribe(), mismatches))
 
 
-def cas_offinder(spacers, mismatches, locus = None, direc = None,
-                 openci_devices = 'G0', keeptmp = False,
-                 template = 'NNNNNNNNNNNNNNNNNNNN',
-                 pam = 'NRG'):
+def cas_offinder(spacers, mismatches, locus=None, direc=None,
+                 openci_devices='G0', keeptmp=False,
+                 template='NNNNNNNNNNNNNNNNNNNN',
+                 pam='NRG'):
     """ Call the cas-offinder tool and return the relevant info
     Parameters
     ----------
@@ -263,7 +260,7 @@ def cas_offinder(spacers, mismatches, locus = None, direc = None,
     msg = 'Must provide either sequences or a directory path'
     assert (locus is not None) or (direc is not None), msg
 
-    _ = [exceptions._check_seq_alphabet(s, base_alphabet = RNAAlphabet) for s in spacers]
+    _ = [exceptions._check_seq_alphabet(s, base_alphabet=RNAAlphabet) for s in spacers]
 
     with TemporaryDirectory() as tmpdir:
 
@@ -276,10 +273,10 @@ def cas_offinder(spacers, mismatches, locus = None, direc = None,
                     raise ValueError('locus must be Bio.Seq objects')
             direc = tmpdir
         elif (direc is not None) and (locus is not None):
-            tmpfile = NamedTemporaryFile(dir = direc,
-                                         suffix = '.fasta',
-                                         buffering = 1,
-                                         mode = 'w')
+            tmpfile = NamedTemporaryFile(dir=direc,
+                                         suffix='.fasta',
+                                         buffering=1,
+                                         mode='w')
             SeqIO.write(locus, tmpfile, 'fasta')
 
         input_path = os.path.join(tmpdir, 'input.txt')
@@ -287,7 +284,7 @@ def cas_offinder(spacers, mismatches, locus = None, direc = None,
 
         with open(input_path, 'w') as handle:
             _build_cas_offinder_input_file(handle, spacers, direc, mismatches,
-                                           template = template+pam)
+                                           template=template + pam)
         _run_casoffinder(input_path, out_path, openci_devices)
 
         out_res = []
@@ -297,13 +294,13 @@ def cas_offinder(spacers, mismatches, locus = None, direc = None,
                 out_res.append({'spacer': Seq(row[0][:-3], alphabet=generic_dna).transcribe(),
                                 'name': row[1],
                                 'left': int(row[2]),
-                                'target': Seq(row[3].upper(), alphabet = generic_dna),
+                                'target': Seq(row[3].upper(), alphabet=generic_dna),
                                 'strand': 1 if row[4] == '+' else -1})
         if len(out_res) > 0:
             return pd.DataFrame(out_res).groupby(['name', 'strand', 'left'])[['spacer', 'target']].first()
         else:
-            index = pd.MultiIndex.from_tuples([], names = ['name', 'strand', 'left'])
-            return pd.DataFrame([], index = index, columns = ['spacer', 'target'])
+            index = pd.MultiIndex.from_tuples([], names=['name', 'strand', 'left'])
+            return pd.DataFrame([], index=index, columns=['spacer', 'target'])
 
 
 def overlap_regions(hits, bed_path):
@@ -327,11 +324,11 @@ def overlap_regions(hits, bed_path):
     if not os.path.exists(bed_path):
         raise IOError('%s does not exist.' % bed_path)
 
-    with NamedTemporaryFile(mode = 'w',buffering = 1,
-                            newline = '') as handle:
-        writer = csv.writer(handle, delimiter = '\t',
+    with NamedTemporaryFile(mode='w', buffering=1,
+                            newline='') as handle:
+        writer = csv.writer(handle, delimiter='\t',
                             quoting=csv.QUOTE_NONE,
-                            dialect = csv.unix_dialect)
+                            dialect=csv.unix_dialect)
         for name, strand, left in hits.index:
             if strand not in {1, -1}:
                 raise TypeError('Strand must be {1, -1}, found %s' % strand)
@@ -339,7 +336,7 @@ def overlap_regions(hits, bed_path):
                 raise TypeError('Left must be an integer, found %s' % type(left))
 
             st = '+' if strand > 0 else '-'
-            writer.writerow([name, left, left+23, None, None, st])
+            writer.writerow([name, left, left + 23, None, None, st])
 
         tdict = {'genes': bed_path, 'hit': handle.name}
         cmd = 'bedtools intersect -a %(hit)s -b %(genes)s -loj -u'
@@ -347,8 +344,8 @@ def overlap_regions(hits, bed_path):
         out = subprocess.check_output(call_args)
         cols = ['Name', 'Left', 'Right', '_', '_', 'Strand']
         df = pd.read_csv(BytesIO(out), sep='\t',
-                         header = None,
-                         names = cols)
+                         header=None,
+                         names=cols)
     df['Strand'] = df['Strand'].map(lambda x: 1 if x == '+' else -1)
     df['Region'] = True
     ser = df.groupby(['Name', 'Strand', 'Left'])['Region'].any()
