@@ -99,9 +99,11 @@ class TestExtract(object):
                       Seq('A'*19 + 'C', alphabet = generic_rna),
                       ])
 
-        res = utils.extract_possible_targets(SeqRecord(seq))
+        with pytest.warns(None) as warns:
+            res = utils.extract_possible_targets(SeqRecord(seq))
 
         assert cor == res
+        assert len(warns) == 0, 'Still emits BioPython warning!'
 
     def test_single_strand(self):
 

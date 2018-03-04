@@ -1,5 +1,5 @@
 from Bio.SeqRecord import SeqRecord
-from Bio.Seq import Seq, reverse_complement
+from Bio.Seq import Seq, reverse_complement, BiopythonWarning
 from Bio.Alphabet import generic_dna, generic_rna, _get_base_alphabet, RNAAlphabet, DNAAlphabet
 from Bio import SeqIO
 import pandas as pd
@@ -13,6 +13,8 @@ from Bio.SeqUtils import nt_search
 from Bio.Alphabet import generic_alphabet
 
 from crisprtree import exceptions
+
+import warnings
 
 import csv
 
@@ -97,16 +99,21 @@ def extract_possible_targets(seq_record, pams = ('NGG',), both_strands = True):
 
     st_seq = str(seq_record.seq.upper())
 
-    found = set()
-    for pam in pams:
-        for res in nt_search(st_seq, pam)[1:]:
-            found.add(Seq(st_seq[res-20:res], alphabet = generic_dna).transcribe())
+    with warnings.catch_warnings():
+        # We're using the new BioPython Seq comparison, don't need the
+        # warning EVERY time.
+        warnings.simplefilter('ignore', category = BiopythonWarning)
 
-    if both_strands:
-        rseq = reverse_complement(st_seq)
+        found = set()
         for pam in pams:
-            for res in nt_search(rseq, pam)[1:]:
-                found.add(Seq(rseq[res-20:res], alphabet = generic_dna).transcribe())
+            for res in nt_search(st_seq, pam)[1:]:
+                found.add(Seq(st_seq[res-20:res], alphabet = generic_dna).transcribe())
+
+        if both_strands:
+            rseq = reverse_complement(st_seq)
+            for pam in pams:
+                for res in nt_search(rseq, pam)[1:]:
+                    found.add(Seq(rseq[res-20:res], alphabet = generic_dna).transcribe())
 
     return sorted(f for f in found if len(f) == 20)
 
