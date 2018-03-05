@@ -9,7 +9,7 @@ from sklearn.base import BaseEstimator
 
 from crisprtree import exceptions
 from crisprtree.preprocessing import locate_hits_in_array
-
+from crisprtree.utils import _make_record_key
 
 def check_spacer_across_loci(spacer, loci, estimator, index=None):
     """ Simple utility function to check all sequences against a single gRNA
@@ -37,8 +37,7 @@ def check_spacer_across_loci(spacer, loci, estimator, index=None):
         index = loci.index
 
     if index is None:
-        index = [locus.id + ' ' + locus.description for locus in loci]
-
+        index = [_make_record_key(locus) for locus in loci]
     resX, resL, resS = locate_hits_in_array(X, estimator=estimator)
 
     out = pd.concat([pd.DataFrame(resL, columns=['left', 'strand']),

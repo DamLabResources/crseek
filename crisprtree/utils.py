@@ -125,7 +125,18 @@ def _make_record_key(seqR):
     str
     """
 
-    return seqR.id + ' ' + seqR.description
+    # clean function in Bio.SeqIO.Interfaces
+    id = seqR.id.replace("\n", " ").replace("\r", " ").replace("  ", " ")
+    description = seqR.description.replace("\n", " ").replace("\r", " ").replace("  ", " ")
+
+    # Class FastaWriter in Bio.SeqIO.FastaIO
+    if description and description.split(None, 1)[0] == id:
+        title = description
+    elif description:
+        title = "%s %s" % (id, description)
+    else:
+        title = id
+    return title
 
 
 def tile_seqrecord(spacer, seq_record):
