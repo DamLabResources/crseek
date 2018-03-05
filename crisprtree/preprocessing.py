@@ -102,7 +102,7 @@ class OneHotTransformer(BaseEstimator):
         return np.array(encoded)
 
 
-def locate_hits_in_array(X, estimator, exhaustive=False, mismatches=6, openci_devices='G0'):
+def locate_hits_in_array(X, estimator, exhaustive=False, mismatches=6, openci_devices='C0'):
     """ Utilizes cas-offinder to find the likeliest hit of the gRNA in a long
     sequence. It uses the provided estimator to rank each potential hit.
 

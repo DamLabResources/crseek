@@ -131,6 +131,7 @@ def _make_record_key(seqR):
 
     # Class FastaWriter in Bio.SeqIO.FastaIO
     if description and description.split(None, 1)[0] == id:
+        # The description includes the id at the start
         title = description
     elif description:
         title = "%s %s" % (id, description)

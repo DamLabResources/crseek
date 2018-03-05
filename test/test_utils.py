@@ -265,6 +265,20 @@ class TestCasOff(object):
         print(res)
         assert_frame_equal(res, cor)
 
+    def test_make_record_key(self):
+        spacer, seq_recs, cor = self.make_basic()
+        for n, seqR in enumerate(seq_recs):
+            if n==1:
+                seqR.description = seqR.id + ' exon 1'
+            elif n==2:
+                seqR.description = seqR.id + 'exon1'
+            elif n==3:
+                seqR.description = seqR.id + '\nvariant 1 exon 2'
+        res = utils.cas_offinder([spacer], 3, locus=seq_recs)
+        cor.index = cor.index.set_levels([utils._make_record_key(seqR) for seqR in seq_recs], level=0)
+        assert_frame_equal(res, cor)
+
+
     @patch('subprocess.check_call')
     def test_fails_gracefully(self, mock):
         mock.side_effect = FileNotFoundError
