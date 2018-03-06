@@ -12,3 +12,4 @@ pyyaml=3.12
 bedtools=2.26.0
 pytest-cov
 coveralls
+cas-offinder
