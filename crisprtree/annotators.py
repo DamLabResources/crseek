@@ -10,7 +10,7 @@ from crisprtree import utils
 
 
 def annotate_grna_binding(spacer, seq_record, estimator, extra_qualifiers=None,
-                          exhaustive=False, mismatch_tolerance=6, openci_devices='G0'):
+                          exhaustive=False, mismatch_tolerance=6, openci_devices=None):
     """ In-place annotation of gRNA binding location.
     Parameters
     ----------
@@ -27,8 +27,9 @@ def annotate_grna_binding(spacer, seq_record, estimator, extra_qualifiers=None,
         If False then a mismatch search is performed first.
     mismatch_tolerance : int
         If using a mismatch search, the tolerance.
-    openci_devices : str
-        Formatted string of device-IDs acceptable to cas-offinder
+    openci_devices : str or None
+        Formatted string of device-IDs acceptable to cas-offinder. If None
+        the first choice is picked from the OpenCI device list.
 
     Returns
     -------

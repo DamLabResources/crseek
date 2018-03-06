@@ -102,7 +102,7 @@ class OneHotTransformer(BaseEstimator):
         return np.array(encoded)
 
 
-def locate_hits_in_array(X, estimator, exhaustive=False, mismatches=6, openci_devices='C0'):
+def locate_hits_in_array(X, estimator, exhaustive=False, mismatches=6, openci_devices=None):
     """ Utilizes cas-offinder to find the likeliest hit of the gRNA in a long
     sequence. It uses the provided estimator to rank each potential hit.
 
@@ -120,8 +120,9 @@ def locate_hits_in_array(X, estimator, exhaustive=False, mismatches=6, openci_de
         If False then a mismatch search is performed first.
     mismatch_tolerance : int
         If using a mismatch search, the tolerance.
-    openci_devices : str
-        Formatted string of device-IDs acceptable to cas-offinder
+    openci_devices : str or None
+        Formatted string of device-IDs acceptable to cas-offinder. If None
+        the first choice is picked from the OpenCI device list.
     Returns
     -------
 
@@ -144,12 +145,13 @@ def locate_hits_in_array(X, estimator, exhaustive=False, mismatches=6, openci_de
     seq_ids = [utils._make_record_key(s) for s in X[:, 1]]
     spacers = np.unique(X[:, 0])
 
-    if exhaustive == False:
-        result = utils.cas_offinder(spacers, mismatches, locus=seqs,
-                                    openci_devices=openci_devices)
-    else:
+    if exhaustive:
         result = pd.concat([utils.tile_seqrecord(spacer, seq) for seq in seqs for spacer in spacers],
                            axis=0)
+    else:
+        result = utils.cas_offinder(spacers, mismatches, locus=seqs,
+                                    openci_devices=openci_devices)
+
 
     if len(result.index) > 0:
         result['score'] = estimator.predict_proba(result.values)
