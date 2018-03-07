@@ -1,9 +1,9 @@
+from itertools import product
 import numpy as np
 import pandas as pd
-from Bio.Alphabet import generic_dna, generic_rna, RNAAlphabet, DNAAlphabet
+from Bio.Alphabet import generic_dna, generic_rna, RNAAlphabet, DNAAlphabet, IUPAC
 from Bio.Seq import Seq
 from sklearn.base import BaseEstimator
-
 from crisprtree import exceptions
 from crisprtree import utils
 
@@ -62,6 +62,10 @@ class OneHotTransformer(BaseEstimator):
     A:T, C:A, etc.
         """
 
+    def __init__(self, spacer_alphabet=IUPAC.unambiguous_rna, target_alphabet=IUPAC.unambiguous_dna):
+        self.spacer_alphabet = spacer_alphabet
+        self.target_alphabet = target_alphabet
+
     def fit(self, X, y):
         """ fit
         In this context nothing happens.
@@ -97,7 +101,9 @@ class OneHotTransformer(BaseEstimator):
 
         encoded = []
         for row in range(X.shape[0]):
-            encoded.append(one_hot_encode_row(X[row, 0].upper(), X[row, 1].upper()))
+            encoded.append(one_hot_encode_row(X[row, 0].upper(), X[row, 1].upper(),
+                                              spacer_alphabet=self.spacer_alphabet,
+                                              target_alphabet=self.target_alphabet))
 
         return np.array(encoded)
 
@@ -152,7 +158,6 @@ def locate_hits_in_array(X, estimator, exhaustive=False, mismatches=6, openci_de
         result = utils.cas_offinder(spacers, mismatches, locus=seqs,
                                     openci_devices=openci_devices)
 
-
     if len(result.index) > 0:
         result['score'] = estimator.predict_proba(result.values)
     else:
@@ -193,14 +198,6 @@ def check_proto_target_input(X):
     _ = [exceptions._check_seq_alphabet(spacer, base_alphabet=RNAAlphabet) for spacer in X[:, 0]]
     _ = [exceptions._check_seq_alphabet(target, base_alphabet=DNAAlphabet) for target in X[:, 1]]
 
-    try:
-        if any(spacer.alphabet != generic_rna for spacer in X[:, 0]):
-            raise ValueError('All spacers must have RNA alphabets')
-        if any(target.alphabet != generic_dna for target in X[:, 1]):
-            raise ValueError('All targets must have DNA alphabets')
-    except AttributeError:
-        raise ValueError('All sequences must be Bio.Seq objects')
-
     return True
 
 
@@ -226,13 +223,17 @@ def match_encode_row(spacer, target):
     return np.array(features)
 
 
-def one_hot_encode_row(spacer, target):
+def one_hot_encode_row(spacer, target,
+                       spacer_alphabet=IUPAC.unambiguous_rna,
+                       target_alphabet=IUPAC.unambiguous_dna):
     """ Does the actual one-hot encoding using a set of nested for-loops.
 
     Parameters
     ----------
     spacer : Seq
     target : Seq
+    spacer_alphabet : RNAAlphabet
+    target_alphabet : DNAAlphabet
 
     Returns
     -------
@@ -240,16 +241,16 @@ def one_hot_encode_row(spacer, target):
 
     """
 
-    seq_order = 'ACGT'
+    spacer_order = sorted(spacer_alphabet.letters)
+    target_order = sorted(target_alphabet.letters)
     features = []
     for pos in range(20):
-        for g in 'ACGU':
-            for t in 'ACGT':
+        for g in spacer_order:
+            for t in target_order:
                 features.append((spacer[pos] == g) and (target[pos] == t))
 
-    for m22 in seq_order:
-        for m23 in seq_order:
-            features.append((target[21] == m22) and (target[22] == m23))
+    for m22, m23 in product(target_order, repeat=2):
+        features.append((target[21] == m22) and (target[22] == m23))
 
     feats = np.array(features) == 1
     assert feats.sum() == 21, 'Nonstandard nucleotide detected.'

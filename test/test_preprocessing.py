@@ -1,8 +1,10 @@
 from itertools import product
+from functools import partial
+
 import numpy as np
 import pandas as pd
 import pytest
-from Bio.Alphabet import generic_dna, generic_rna
+from Bio.Alphabet import generic_dna, generic_rna, IUPAC
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from crisprtree import exceptions
@@ -93,19 +95,38 @@ class TestBasicInputs(object):
                 check(inp)
 
 
-class TestOneHotEncoding(object):
+class TestOneHotEncodingUnAmbig(object):
+
+    spacer_alpha = IUPAC.unambiguous_rna
+    target_alpha = IUPAC.unambiguous_dna
+    processor = partial(preprocessing.one_hot_encode_row)
+    cor_shape = 4 * 4 * 20 + 4*4
+
+    def check_shape(self, vals):
+        assert vals.shape[0] == self.cor_shape
+
+    def get_pam_pos(self, pam):
+
+        sz = len(self.spacer_alpha.letters) * len(self.target_alpha.letters)
+        pam_order = list(product(sorted(self.target_alpha.letters), repeat=2))
+        pos = next(num for num, _pam in enumerate(pam_order) if (''.join(_pam)) == pam[-2:])
+        return 20*sz + pos
+
     def test_encoding(self):
 
         spacer = Seq('A' * 20, alphabet=generic_rna)
         target = Seq('A' * 20 + 'AGG', alphabet=generic_dna)
 
-        cor = np.zeros(21 * 16)
-        locs = np.arange(0, 20 * 16, 16)
-        cor[locs] = True
-        cor[-6] = True  # GG
+        cor = np.zeros(self.cor_shape)
+        sz = len(self.spacer_alpha.letters) * len(self.target_alpha.letters)
 
-        res = preprocessing.one_hot_encode_row(spacer, target)
-        assert res.shape == (21 * 16,)
+        locs = np.arange(0, 20 * sz, sz)
+        cor[locs] = True
+
+        cor[self.get_pam_pos('AGG')] = True  # GG
+
+        res = self.processor(spacer, target)
+        self.check_shape(res)
 
         np.testing.assert_array_equal(cor.astype(bool), res)
 
@@ -114,16 +135,19 @@ class TestOneHotEncoding(object):
         spacer = Seq('U' + 'A' * 19, alphabet=generic_rna)
         target = Seq('A' * 20 + 'AGG', alphabet=generic_dna)
 
-        cor = np.zeros(21 * 16)
-        locs = np.arange(0, 20 * 16, 16)
+        cor = np.zeros(self.cor_shape)
+        sz = len(self.spacer_alpha.letters) * len(self.target_alpha.letters)
+        locs = np.arange(0, 20 * sz, sz)
         cor[locs] = True
         cor[0] = False
-        cor[12] = True
-        cor[-6] = True  # GG
 
-        res = preprocessing.one_hot_encode_row(spacer, target)
+        ua_pos = 3*len(self.target_alpha.letters)
+        cor[ua_pos] = True
 
-        assert res.shape == (21 * 16,)
+        cor[self.get_pam_pos('AGG')] = True  # GG
+
+        res = self.processor(spacer, target)
+        self.check_shape(res)
 
         np.testing.assert_array_equal(cor.astype(bool), res)
 
@@ -131,20 +155,83 @@ class TestOneHotEncoding(object):
 
         spacer = Seq('U' + 'A' * 19, alphabet=generic_rna)
 
-        locs = np.arange(0, 20 * 16, 16)
+        sz = len(self.spacer_alpha.letters) * len(self.target_alpha.letters)
+        locs = np.arange(0, 20 * sz, sz)
+        ua_pos = 3*len(self.target_alpha.letters)
 
-        pams = product('ACGT', repeat=2)
+        pams = product(sorted(self.target_alpha.letters), repeat=2)
         for pos, (p1, p2) in enumerate(pams):
-            cor = np.zeros(21 * 16)
-            cor[locs] = True
-            cor[0] = False
-            cor[12] = True
-            cor[20 * 16 + pos] = True  # PAM
+            cor = np.zeros(self.cor_shape)
+            cor[locs[1:]] = True
+            cor[ua_pos] = True
+
+            cor[20*sz + pos] = True
+
             target = Seq('A' * 20 + 'A' + p1 + p2, alphabet=generic_dna)
 
-            res = preprocessing.one_hot_encode_row(spacer, target)
+            res = self.processor(spacer, target)
+            self.check_shape(res)
 
             np.testing.assert_array_equal(cor.astype(bool), res)
+
+    def test_ambigious_target(self):
+
+        spacer = Seq('A' * 20, alphabet=generic_rna)
+        target = Seq('N' + 'A' * 19 + 'AGG', alphabet=generic_dna)
+
+        with pytest.raises(AssertionError):
+            preprocessing.one_hot_encode_row(spacer, target)
+
+
+class TestOneHotEncodingAmbig(TestOneHotEncodingUnAmbig):
+
+    spacer_alpha = IUPAC.unambiguous_rna
+    target_alpha = IUPAC.ambiguous_dna
+    cor_shape = 4 * 15 * 20 + 15*15
+
+    processor = partial(preprocessing.one_hot_encode_row,
+                        spacer_alphabet=IUPAC.unambiguous_rna,
+                        target_alphabet=IUPAC.ambiguous_dna)
+
+
+    def test_ambigious_target(self):
+
+        spacer = Seq('A' * 20, alphabet=generic_rna)
+        target = Seq('N' + 'A' * 19 + 'AGG', alphabet=generic_dna)
+
+        res = self.processor(spacer, target)
+        self.check_shape(res)
+
+        cor = np.zeros(self.cor_shape)
+        sz = len(self.spacer_alpha.letters) * len(self.target_alpha.letters)
+        locs = np.arange(0, 20 * sz, sz)
+        cor[locs] = True
+        cor[0] = False
+        cor[8] = True #AN
+        cor[self.get_pam_pos('AGG')] = True  # GG
+
+        np.testing.assert_array_equal(cor.astype(bool), res)
+
+    def test_ambigious_pam(self):
+
+        spacer = Seq('A' * 20, alphabet=generic_rna)
+        target = Seq('N' + 'A' * 19 + 'ARG', alphabet=generic_dna)
+
+        res = self.processor(spacer, target)
+        self.check_shape(res)
+
+        cor = np.zeros(self.cor_shape)
+        sz = len(self.spacer_alpha.letters) * len(self.target_alpha.letters)
+        locs = np.arange(0, 20 * sz, sz)
+        cor[locs] = True
+        cor[0] = False
+        cor[8] = True #AN
+        cor[self.get_pam_pos('ARG')] = True  # GG
+
+        np.testing.assert_array_equal(cor.astype(bool), res)
+
+
+class TestOneHotTransformer(object):
 
     def test_transforming(self):
 
@@ -161,7 +248,7 @@ class TestOneHotEncoding(object):
         inp = np.array([[spacer, target],
                         [spacer, target],
                         [spacer, target]])
-        print(inp.shape)
+
         hot_encoder = preprocessing.OneHotTransformer()
         res = hot_encoder.transform(inp)
 
@@ -169,14 +256,6 @@ class TestOneHotEncoding(object):
 
         for row in range(3):
             np.testing.assert_array_equal(cor.astype(bool), res[row, :])
-
-    def test_bad_target(self):
-
-        spacer = Seq('A' * 20, alphabet=generic_rna)
-        target = Seq('N' + 'A' * 19 + 'AGG', alphabet=generic_dna)
-
-        with pytest.raises(AssertionError):
-            preprocessing.one_hot_encode_row(spacer, target)
 
 
 class TestMatchingEncoding(object):
