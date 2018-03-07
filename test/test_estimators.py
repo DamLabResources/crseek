@@ -8,11 +8,12 @@ import numpy as np
 import pytest
 import yaml
 from Bio import Alphabet
+from Bio.Alphabet import IUPAC
 from Bio.Seq import Seq
 from sklearn.pipeline import Pipeline
 
-from crisprtree import preprocessing
 from crisprtree import estimators
+from crisprtree import preprocessing
 
 
 def make_match_array_from_seqs(spacer, seqs):
@@ -37,7 +38,7 @@ def make_match_array_from_seqs(spacer, seqs):
     return preprocessing.MatchingTransformer().transform(seq_array)
 
 
-def make_onehot_array_from_seqs(spacer, seqs):
+def make_onehot_array_from_seqs(spacer, seqs, spacer_alpha=IUPAC.unambiguous_rna, target_alpha=IUPAC.unambiguous_dna):
     """
     Utility function for creating a OneHotArray (Nx336 boolean) from a list
     of sequences.
@@ -56,11 +57,13 @@ def make_onehot_array_from_seqs(spacer, seqs):
     """
 
     seq_array = np.array(list(zip(cycle([spacer]), seqs)))
-    return preprocessing.OneHotTransformer().transform(seq_array)
+    former = preprocessing.OneHotTransformer(spacer_alphabet=spacer_alpha,
+                                             target_alphabet=target_alpha)
+    return former.transform(seq_array)
 
 
 class BaseChecker(object):
-    hits = [Seq('A' * 20 + 'AGG', alphabet=Alphabet.generic_dna),  # Perfect hit
+    hits = [Seq('A' * 20 + 'AGG', alphabet=Alphabet.IUPAC.unambiguous_dna),  # Perfect hit
             Seq('A' * 19 + 'T' + 'AGG', alphabet=Alphabet.generic_dna),  # One miss in seed
             Seq('T' + 'A' * 19 + 'AGG', alphabet=Alphabet.generic_dna),  # One miss outside seed
             Seq('TTT' + 'A' * 17 + 'AGG', alphabet=Alphabet.generic_dna),  # Three miss outside seed
@@ -337,3 +340,33 @@ class TestCFDEstimator(BaseChecker):
         mod = estimators.CFDEstimator()
         assert mod.score_vector.shape == (336,)
         np.testing.assert_approx_equal(mod.score_vector.sum(), 217.9692)
+
+
+class TestCFDNonStrict(TestCFDEstimator):
+    estimator = estimators.CFDEstimator(strict=False)
+    pipeline = estimators.CFDEstimator.build_pipeline(strict=False)
+
+    def _make_match_array(self, spacer, hits):
+        return make_onehot_array_from_seqs(spacer, hits,
+                                           spacer_alpha=IUPAC.unambiguous_rna,
+                                           target_alpha=IUPAC.ambiguous_dna)
+
+    def test_loading(self):
+        mod = estimators.CFDEstimator(strict=False)
+        assert mod.score_vector.shape == (1425,)
+        np.testing.assert_approx_equal(mod.score_vector.sum(), 832.9891)
+
+    def test_ambigious(self):
+        seqs = [Seq('AT' + 'A' * 18 + 'GGG', alphabet=Alphabet.generic_dna),
+                Seq('CT' + 'A' * 18 + 'GGG', alphabet=Alphabet.generic_dna),
+                Seq('GT' + 'A' * 18 + 'GGG', alphabet=Alphabet.generic_dna),
+                Seq('TT' + 'A' * 18 + 'GGG', alphabet=Alphabet.generic_dna)]
+
+        ambig = Seq('NT' + 'A' * 18 + 'GGG', alphabet=Alphabet.generic_dna)
+        spacer = Seq('A' * 20, alphabet=Alphabet.generic_rna)
+
+        X = self._make_match_array(spacer, seqs + [ambig])
+        probs = self.estimator.predict_proba(X)
+
+        # The N should be the mean of the 4 possible choices
+        assert np.mean(probs[:4]) == probs[-1]

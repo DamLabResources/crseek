@@ -1,12 +1,15 @@
 from __future__ import division
 import os
+from itertools import product
 import numpy as np
 import yaml
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
+from Bio.Alphabet import IUPAC
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.pipeline import Pipeline
 from crisprtree.preprocessing import MatchingTransformer, OneHotTransformer
+from crisprtree import loaders
 
 this_dir, this_filename = os.path.split(os.path.abspath(__file__))
 DATA_PATH = os.path.join(this_dir, '..', "data")
@@ -258,7 +261,7 @@ class MITEstimator(SequenceBase):
 
 
 class CFDEstimator(SequenceBase):
-    def __init__(self, cutoff=0.75, PAM='NGG'):
+    def __init__(self, cutoff=0.75, PAM='NGG', matrix='CFD', strict=True):
         """
         Parameters
         ----------
@@ -274,18 +277,41 @@ class CFDEstimator(SequenceBase):
         """
 
         self.cutoff = cutoff
-        self._read_scores()
+        self._read_scores(matrix, strict)
+        self.strict = strict
         self.PAM = PAM
 
-    def _read_scores(self):
+    def _read_scores(self, matrix, strict):
+        """ Reads in matrix and formats non-strictness
+        Parameters
+        ----------
+        matrix : str or pd.DataFrame
+        strict : bool
 
-        with open(os.path.join(DATA_PATH, 'cfdMatrix.csv')) as handle:
-            vals = []
-            for line in handle:
-                line = line.replace(',', '').replace('[', '').replace(']', '').strip()
-                vals += [float(v) for v in line.split()]
+        """
 
-        self.score_vector = np.array(vals)
+        missmatch_encoding, pam_encoding = loaders.load_mismatch_scores(matrix)
+
+        if not strict:
+            degen = {'M': 'AC', 'R': 'AG', 'W': 'AT',
+                     'S': 'CG', 'Y': 'CT', 'K': 'GT',
+                     'V': 'ACG', 'H': 'ACT', 'D': 'AGT', 'B': 'CGT',
+                     'N': 'ACGT'}
+
+            for dest_target, target_cols in degen.items():
+                for spacer_col in 'ACGU':
+                    dest_col = spacer_col + dest_target
+                    mean_cols = [spacer_col + tg for tg in target_cols]
+                    missmatch_encoding[dest_col] = missmatch_encoding.loc[:, mean_cols].mean(axis=1)
+            for pos2, pos3 in product(list(degen.keys()) + list('ACGT'), repeat=2):
+                wanted_cols = [a + b for a, b in product(degen.get(pos2, pos2), degen.get(pos3, pos3))]
+                pam_encoding[pos2 + pos3] = pam_encoding[wanted_cols].mean()
+
+            missmatch_encoding = missmatch_encoding.reindex(columns=sorted(missmatch_encoding.columns))
+            pam_encoding = pam_encoding.reindex(sorted(pam_encoding.index))
+
+        self.score_vector = np.concatenate([missmatch_encoding.values.flatten(),
+                                            pam_encoding.values.flatten()])
 
     @staticmethod
     def build_pipeline(**kwargs):
@@ -300,8 +326,15 @@ class CFDEstimator(SequenceBase):
         Pipeline
 
         """
+        strict = kwargs.get('strict', True)
 
-        pipe = Pipeline(steps=[('transform', OneHotTransformer()),
+        if strict:
+            spacer_alpha, target_alpha = IUPAC.unambiguous_rna, IUPAC.unambiguous_dna
+        else:
+            spacer_alpha, target_alpha = IUPAC.unambiguous_rna, IUPAC.ambiguous_dna
+
+        pipe = Pipeline(steps=[('transform', OneHotTransformer(target_alphabet=target_alpha,
+                                                               spacer_alphabet=spacer_alpha)),
                                ('predict', CFDEstimator(**kwargs))])
         return pipe
 
@@ -309,13 +342,14 @@ class CFDEstimator(SequenceBase):
         return self
 
     def predict(self, X):
-
         return self.predict_proba(X) >= self.cutoff
 
     def predict_proba(self, X):
 
-        if X.shape[1] != 336:
-            raise ValueError('Input array shape must be Nx336')
+        self._read_scores('CFD', strict=self.strict)
+
+        if X.shape[1] != self.score_vector.shape[0]:
+            raise ValueError('Input array shape must match self.score_vector')
 
         items = X.shape[0]
         scores = np.tile(self.score_vector, (items, 1))
