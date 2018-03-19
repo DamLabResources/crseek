@@ -256,7 +256,6 @@ def _guess_openci_devices():
     pos = out.find('Available device list:')
     assert pos != -1
     for line in out[pos:].split('\n'):
-        print(line)
         if line.startswith('Type:'):
             _pu, _id, _name = line.split(', ')
             pu = 'G' if 'GPU' in _pu else 'C'
