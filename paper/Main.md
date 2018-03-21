@@ -1,8 +1,6 @@
 # Introduction
 
-## Cas9 history
-
-## Cas9 binding rules
+A few sentences about Cas9 structure, history, etc.
 
 However, recent research has shown that there are still unknown aspects of the binding site recognition of the Cas9 system [PMID: ].
 Early target search strategies involved using rule based methods that excluded potiential targets by defining either a total maximum of mismatches [PMID: ] or distinguishing between seed and tail regions [PMID: ].
@@ -11,13 +9,11 @@ Work by Hsu et al [PMID: ] created a position specific binding matrix by testing
 Deunch et al [PMID: ] followed this work by creating an even larger dataset of >80,000 gRNAs targeting many positions across the same gene.
 Klien et al [PMID: ] further refined this method by developing a kinetic model of Cas9 binding and cleavage using these datasets and showing that a small number of parameters can explain these experimentally determined binding rules.
 
-## Cas9 uses
 The CRISPR/Cas9 system has revolutionized the gene editing field [PMID: ].
 It has democratized the field by lowering the barrier to entry for editing a specific genomic loci [PMID: ].
 Various pre-made Cas9 systems have been developed and released which have useful properties such as an inducible expression [PMID: , Addgene: ], tissue specificity [PMID: , Addgene: ], as well as advanced editing strategies [PMID: , Addgene: ].
 In practice, targeting a specific region genome with any of these systems simply involves finding a protospacer adjacent motif (PAM) next to unique 20-bp segment of the DNA [PMID: ] and performing basic molecular biology techniques.
 
-## Current prediction software
 There are numerous currently employed tools for designing gRNAs. These have been extensively reviewed by [PMIDs:].
 All of these tools use the same basic strategy.
 First, the target DNA is searched for PAM recognition sites and the adjacent protospacers are extracted.
@@ -25,14 +21,12 @@ Next, the potential protospacers are searched against a reference database allow
 Finally, any the protospacers are ranked by their potential off-target risk.
 These tools can be served either as a webserver and occasionally as a locally installable toolset.
 
-## Lacking features
 However, all of these tools lack many of the features needed from a bioinformatics perspective.
 Webtools are often limited to searching model organisms.
 Most tools cannot search for non-standard Cas9 variants such as Cpf1, SaCas9, or other species specific Cas9s.
 Currently distributed software lacks unit-testing, one-command install of the tool and dependencies, continious integration frameworks, or a documented API.
 These features are needed in order for bioinformaticians to design larger scale experiments or develop automation methods for more advanced gene editing strategies.
 
-## Our stuff
 In this manuscript we present CRISPRTree, a Python library mirroring the popular Scikit-Learn API.
 It provides both high- and low-level methods for designing CRISPR gene editing strategies.
 We believe it will provide an invaluable resource for computational biologists looking to employ CRISPR based gene editing techniques.
@@ -108,7 +102,7 @@ This allows for search and estimation across variable populations. This is usefu
 In order to showcase the many uses of the `crisprtree` module we present four simple and realistics CRISPR/Cas9 design tasks.
 These tasks would not be reasonably possible with currently available tools.
 
-## Task
+## Task 1
 
 In this project you are tasked with introducing an eGFP plasmid (Addgene-54622) into the newly sequenced Clostridioides difficile genome (Genbank: NC_009089.1).
 You want to make an spCas9 positive control knocking out the eGFP gene while missing the rest of the newly sequenced genome.
@@ -151,7 +145,7 @@ Using the BioPython GenomeDiagram module we can show where these spacers will bi
 
  - Summary Figure
  
-## Task
+## Task 2
 
 The previous task involved searching for the spacers against a single gene.
 However, one may want to generate a CRISPR/Cas9 knockout library.
@@ -219,7 +213,7 @@ From this we learn that most gene loci can be targeted by spacers which are uniq
 However, there are a handful of genes which cannot be uniquely targeted by SpCas9.
 In this instance one can simply ignore those genes or utlize one of the many Cas9 variants implemented in the `data/cas-variants` folder.
 
-## Task
+## Task 3
 
 Leaving the C. diff genome we explore another potential task.
 In this we will explore the effect of spacer targeting against a variable population.
