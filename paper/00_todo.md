@@ -6,6 +6,7 @@
  - Setup readthedocs links
 
 # Writing
+ - Abstract, Title, authors, affiliations, and other front-stuff
  - Make schematic figure of the setup
  - Add figures into the manuscript
  - Add references

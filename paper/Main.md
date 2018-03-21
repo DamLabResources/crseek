@@ -42,19 +42,19 @@ The toolset, and its dependencies, are installable using the Ananconda environme
 Throughout the research field there is a great deal of variability in the nomeclature of the various parts of the CRISPR/Cas9 complex.
 Many of these nomeclatures do not conform to the Python PEP-8 standard [REF].
 For consistency we refer to the complex parts in the following ways:
-  - The `gRNA` refers to the entire strand of RNA which binds to the CRISPR/Cas9 complex. This molecule is not directly represented in crisprtree.
-  - The `pam` refers to the, potentially degenerate, nucleotide recognition site of the particular Cas9. This requires a DNA alphabet.
-  - The `spacer` refers to the 20-nucleotide region of the gRNA which is used for target matching by the CRISPR/Cas9 complex. This requires an RNA alphabet.
-  - The `target` refers to the 20-nucleotide region of the DNA which, potentially, matches the `spacer`.
+  - The _gRNA_ refers to the entire strand of RNA which binds to the CRISPR/Cas9 complex. This molecule is not directly represented in crisprtree.
+  - The _pam_ refers to the, potentially degenerate, nucleotide recognition site of the particular Cas9. This requires a DNA alphabet.
+  - The _spacer_ refers to the 20-nucleotide region of the gRNA which is used for target matching by the CRISPR/Cas9 complex. This requires an RNA alphabet.
+  - The _target_ refers to the 20-nucleotide region of the DNA which, potentially, matches the spacer.
   For various implementation details the `target` includes the PAM recognition site. This requires a DNA alphabet.
-  - The `loci` refers to a >20-nucleotide segment of the DNA which may contain potential `target`s.
+  - The _loci_ refers to a >20-nucleotide segment of the DNA which may contain potential targets.
 
 ## Class schematic
 
 We have intentionally mirrored the Scikit-Learn API.
-We subclass the `BaseEstimator` class and overload the `fit`, `transform`, and `predict` methods.
+We subclass the `BaseEstimator` class and overload the `fit`, `transform`, `predict`, and `predict_proba` methods.
 This allows us to seamlessly use all of the tools of the Scikit-Learn package such as cross-validation, normalization, or other prediciton strategies.
-We have decomposed this methodology into three main tasks: Searching, Encoding, and Predicting.
+We have decomposed this methodology into three main tasks: Searching, Preprocessing, and Estimating.
 We use the BioPython library to enforce appropriate nucleotide alphabets [PMID: ] as inputs and outputs of the various tools.
 
 ## Searching
@@ -79,7 +79,7 @@ These classes take pairs of `spacer`, `target` and return binary vectors for dow
 By implementing these as sublasses of the `sklearn.BaseEstimator` one can use these classes in `sklearn.Pipeline` instances.
 This downstream processing can either employ one of the pre-built `estimator` classes or as preprocessing for other machine learning algorithms.
 
-## Estimators
+## Estimating
 
 We have collected multiple pre-built algorithms for determining the activity given a pair of `spacer`, `targets`.
 These estimators as input take the binary vectors produced by the various preprocessing madules.
@@ -93,8 +93,8 @@ New estimators can be easily added by subclassing the `SequenceBase` abstract ba
 
 In order to account for many of the idiosyncrasies of designing CRSIPR/Cas9 tools we have added a few optional features.
 Degeneterate bases can be used across all tools.
-These bases are assumed to be each relevant nucleotide at equal likelihoods and the penalty scores are scaled accordingly.
-SAM/BAM files can be used in all input instances.
+These bases are assumed to be each relevant nucleotide at equal likelihoods and the penalty scores are scaled accordingly (eg an R is 50% likely to be an A or G).
+SAM/BAM files can be used as input in instances.
 This allows for search and estimation across variable populations. This is useful when targeting microbiomes, metagenomes, or highly mutable viral genomes.
 
 # Uses
