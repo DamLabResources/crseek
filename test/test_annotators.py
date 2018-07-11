@@ -3,9 +3,9 @@ from Bio import Alphabet
 from Bio.Seq import Seq
 from Bio.SeqFeature import SeqFeature
 from Bio.SeqRecord import SeqRecord
-from crisprtree import annotators
-from crisprtree import estimators
-from crisprtree import utils
+from crseek import annotators
+from crseek import estimators
+from crseek import utils
 from test.test_evaluators import build_estimator
 
 

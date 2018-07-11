@@ -18,27 +18,27 @@ doclink = """
 Documentation
 -------------
 
-The full documentation is at http://crisprtree.rtfd.org."""
+The full documentation is at http://crseek.rtfd.org."""
 history = open('HISTORY.rst').read().replace('.. :changelog:', '')
 
 setup(
-    name='crisprtree',
+    name='crseek',
     version='0.1.0',
     description='Deploy static HTML sites to S3 with the simple "alotofeffort" command.',
     long_description=readme + '\n\n' + doclink + '\n\n' + history,
     author='Will Dampier',
     author_email='judowill@gmail.com',
-    url='https://github.com/judowill/crisprtree',
+    url='https://github.com/judowill/crseek',
     packages=[
-        'crisprtree',
+        'crseek',
     ],
-    package_dir={'crisprtree': 'crisprtree'},
+    package_dir={'crseek': 'crseek'},
     include_package_data=True,
     install_requires=[
     ],
     license='MIT',
     zip_safe=False,
-    keywords='crisprtree',
+    keywords='crseek',
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
         'Intended Audience :: Developers',

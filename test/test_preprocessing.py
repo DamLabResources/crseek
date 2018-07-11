@@ -7,10 +7,10 @@ import pytest
 from Bio.Alphabet import generic_dna, generic_rna, IUPAC
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
-from crisprtree import exceptions
-from crisprtree import preprocessing
-from crisprtree import utils
-from crisprtree.estimators import CFDEstimator
+from crseek import exceptions
+from crseek import preprocessing
+from crseek import utils
+from crseek.estimators import CFDEstimator
 
 
 class TestBasicInputs(object):

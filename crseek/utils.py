@@ -15,7 +15,7 @@ from Bio.Seq import Seq, reverse_complement, BiopythonWarning
 from Bio.SeqRecord import SeqRecord
 from Bio.SeqUtils import nt_search
 
-from crisprtree import exceptions
+from crseek import exceptions
 
 
 def smrt_seq_convert(outfmt, seqs, default_phred = None,

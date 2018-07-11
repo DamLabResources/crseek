@@ -6,8 +6,8 @@ sys.path.append(pacPath)
 import argparse
 import pandas as pd
 import numpy as np
-from crisprtree.evaluators import positional_aggregation
-from crisprtree import estimators
+from crseek.evaluators import positional_aggregation
+from crseek import estimators
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.Alphabet import generic_dna

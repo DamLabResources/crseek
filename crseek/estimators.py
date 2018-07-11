@@ -8,8 +8,8 @@ from Bio.SeqRecord import SeqRecord
 from Bio.Alphabet import IUPAC
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.pipeline import Pipeline
-from crisprtree.preprocessing import MatchingTransformer, OneHotTransformer
-from crisprtree import loaders
+from crseek.preprocessing import MatchingTransformer, OneHotTransformer
+from crseek import loaders
 
 this_dir, this_filename = os.path.split(os.path.abspath(__file__))
 DATA_PATH = os.path.join(this_dir, '..', "data")
@@ -45,7 +45,7 @@ class SequenceBase(BaseEstimator, ClassifierMixin):
             An shallow-copy of the original SeqRecord with the SeqFeatures
             filled with hits.
         """
-        from crisprtree.annotators import annotate_grna_binding
+        from crseek.annotators import annotate_grna_binding
 
         return annotate_grna_binding(spacer, seq, self,
                                      exhaustive=exhaustive,

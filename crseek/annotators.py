@@ -4,9 +4,9 @@ from Bio.Seq import Seq, reverse_complement
 from Bio.SeqFeature import SeqFeature, FeatureLocation
 from Bio.SeqRecord import SeqRecord
 
-from crisprtree import exceptions
-from crisprtree.estimators import SequenceBase
-from crisprtree import utils
+from crseek import exceptions
+from crseek.estimators import SequenceBase
+from crseek import utils
 
 
 def annotate_grna_binding(spacer, seq_record, estimator, extra_qualifiers=None,

@@ -8,7 +8,7 @@ import yaml
 from Bio import Alphabet
 from Bio.Seq import Seq
 
-from crisprtree import loaders
+from crseek import loaders
 
 
 def test_load_mismatch_penalties_CFD():

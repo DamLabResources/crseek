@@ -2,6 +2,6 @@
 Usage
 ========
 
-To use CRISPRTree in a project::
+To use crseek in a project::
 
-	import crisprtree
+	import crseek

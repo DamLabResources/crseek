@@ -5,8 +5,8 @@ sys.path.append(pacPath)
 
 import argparse
 import pandas as pd
-from crisprtree.evaluators import check_spacer_across_loci
-from crisprtree import estimators
+from crseek.evaluators import check_spacer_across_loci
+from crseek import estimators
 from Bio import SeqIO
 
 

@@ -24,7 +24,7 @@ clean-pyc:
 	find . -name '*~' -exec rm -f {} +
 
 lint:
-	flake8 crisprtree test
+	flake8 crseek test
 
 test:
 	py.test
@@ -33,15 +33,15 @@ test-all:
 	tox
 
 coverage:
-	coverage run --source crisprtree setup.py test
+	coverage run --source crseek setup.py test
 	coverage report -m
 	coverage html
 	open htmlcov/index.html
 
 docs:
-	rm -f docs/crisprtree.rst
+	rm -f docs/crseek.rst
 	rm -f docs/modules.rst
-	sphinx-apidoc -o docs/ crisprtree
+	sphinx-apidoc -o docs/ crseek
 	$(MAKE) -C docs clean
 	$(MAKE) -C docs html
 	open docs/_build/html/index.html

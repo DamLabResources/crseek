@@ -14,8 +14,8 @@ from Bio.Seq import Seq, reverse_complement
 from Bio.SeqRecord import SeqRecord
 from pandas.util.testing import assert_series_equal, assert_frame_equal
 
-from crisprtree import exceptions
-from crisprtree import utils
+from crseek import exceptions
+from crseek import utils
 from test.tools import make_random_seq
 
 formats = ['SeqRecord', 'Seq', 'str', 'tuple']

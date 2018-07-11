@@ -1,5 +1,5 @@
 import argparse
-from crisprtree.utils import extract_possible_targets
+from crseek.utils import extract_possible_targets
 from collections import Counter
 from Bio import SeqIO
 

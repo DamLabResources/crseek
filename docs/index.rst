@@ -20,8 +20,8 @@ Contents:
 Feedback
 ========
 
-If you have any suggestions or questions about **CRISPRTree** feel free to email me
+If you have any suggestions or questions about **crseek** feel free to email me
 at judowill@gmail.com.
 
-If you encounter any errors or problems with **CRISPRTree**, please let me know!
-Open an Issue at the GitHub http://github.com/judowill/crisprtree main repository.
+If you encounter any errors or problems with **crseek**, please let me know!
+Open an Issue at the GitHub http://github.com/judowill/crseek main repository.

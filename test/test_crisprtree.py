@@ -1,18 +1,7 @@
 """
-Tests for `crisprtree` module.
+Tests for `crseek` module.
 """
 import pytest
-from crisprtree import crisprtree
+from crseek import crseek
 
 
-class TestCrisprtree(object):
-    @classmethod
-    def setup_class(cls):
-        pass
-
-    def test_something(self):
-        pass
-
-    @classmethod
-    def teardown_class(cls):
-        pass

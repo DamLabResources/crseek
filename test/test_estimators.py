@@ -12,8 +12,8 @@ from Bio.Alphabet import IUPAC
 from Bio.Seq import Seq
 from sklearn.pipeline import Pipeline
 
-from crisprtree import estimators
-from crisprtree import preprocessing
+from crseek import estimators
+from crseek import preprocessing
 
 
 def make_match_array_from_seqs(spacer, seqs):

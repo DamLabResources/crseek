@@ -3,7 +3,7 @@ from Bio import Alphabet
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
-from crisprtree import exceptions
+from crseek import exceptions
 
 
 class TestCheckAlphabet(object):

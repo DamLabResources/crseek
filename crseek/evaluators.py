@@ -7,9 +7,9 @@ from Bio import Alphabet
 from Bio.Seq import Seq
 from sklearn.base import BaseEstimator
 
-from crisprtree import exceptions
-from crisprtree.preprocessing import locate_hits_in_array
-from crisprtree.utils import _make_record_key
+from crseek import exceptions
+from crseek.preprocessing import locate_hits_in_array
+from crseek.utils import _make_record_key
 
 def check_spacer_across_loci(spacer, loci, estimator, index=None):
     """ Simple utility function to check all sequences against a single gRNA

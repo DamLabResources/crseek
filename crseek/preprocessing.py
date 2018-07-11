@@ -4,8 +4,8 @@ import pandas as pd
 from Bio.Alphabet import generic_dna, generic_rna, RNAAlphabet, DNAAlphabet, IUPAC
 from Bio.Seq import Seq
 from sklearn.base import BaseEstimator
-from crisprtree import exceptions
-from crisprtree import utils
+from crseek import exceptions
+from crseek import utils
 
 
 class MatchingTransformer(BaseEstimator):

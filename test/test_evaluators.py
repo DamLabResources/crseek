@@ -7,10 +7,10 @@ from Bio.Seq import reverse_complement, Seq
 from Bio.SeqRecord import SeqRecord
 from pandas.util.testing import assert_series_equal, assert_index_equal
 from sklearn.pipeline import Pipeline
-from crisprtree import estimators
-from crisprtree import evaluators
-from crisprtree import preprocessing
-from crisprtree import utils
+from crseek import estimators
+from crseek import evaluators
+from crseek import preprocessing
+from crseek import utils
 from test.test_preprocessing import make_random_seq
 
 
