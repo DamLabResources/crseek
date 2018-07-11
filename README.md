@@ -1,6 +1,5 @@
-=============================
 crseek
-=============================
+======
 
 .. image:: https://travis-ci.org/DamLabResources/crisprtree.png?branch=master
     :target: https://travis-ci.org/DamLabResources/crisprtree
