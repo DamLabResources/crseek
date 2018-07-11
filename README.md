@@ -56,7 +56,7 @@ These modules are modeled after the preprocessing modules in `Sklearn` and are c
  - `crseek.estimators.KineticEstimator`
 
 These modules can take the outputs of preprocessed (`spacer`, `target`) pairs and estimate the likelihood of cleavage under numerous
-assumptions. These modules implement `.fit()`, .predict()`, and `.predict_proba()` methods and are usable in all `Sklearn` tools.
+assumptions. These modules implement `.fit()`, `.predict()`, and `.predict_proba()` methods and are usable in all `Sklearn` tools.
 
 ### Utilities
 
