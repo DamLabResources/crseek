@@ -24,11 +24,11 @@ history = open('HISTORY.rst').read().replace('.. :changelog:', '')
 setup(
     name='crseek',
     version='0.1.0',
-    description='Deploy static HTML sites to S3 with the simple "alotofeffort" command.',
+    description='Search for CRISPR-Cas9 targets in a genome.',
     long_description=readme + '\n\n' + doclink + '\n\n' + history,
     author='Will Dampier',
-    author_email='judowill@gmail.com',
-    url='https://github.com/judowill/crseek',
+    author_email='wnd22@drexel.edu',
+    url='https://github.com/DamLabResources/crseek',
     packages=[
         'crseek',
     ],
@@ -44,11 +44,6 @@ setup(
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
         'Natural Language :: English',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.6',
-        'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.3',
-        'Programming Language :: Python :: Implementation :: PyPy',
     ],
 )
