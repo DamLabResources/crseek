@@ -269,6 +269,32 @@ class TestMatchingEncoding(object):
 
         np.testing.assert_array_equal(cor.astype(bool), res)
 
+    def test_non_standard_pams(self):
+
+        spacer = Seq('A' * 20, alphabet=generic_rna)
+        target = Seq('A' * 20 + 'AGGAAT', alphabet=generic_dna)
+        cor = np.array([True] * 21)
+
+        pam_pattern = preprocessing.make_pam_pattern('NNGRRT')
+
+        res = preprocessing.match_encode_row(spacer, target, pam_pattern = pam_pattern)
+        assert res.shape == (20 + 1,)
+
+        np.testing.assert_array_equal(cor.astype(bool), res)
+
+    def test_non_standard_pams_and_lengths(self):
+
+        spacer = Seq('A' * 25, alphabet=generic_rna)
+        target = Seq('A' * 25 + 'AGGAAT', alphabet=generic_dna)
+        cor = np.array([True] * 26)
+
+        pam_pattern = preprocessing.make_pam_pattern('NNGRRT')
+
+        res = preprocessing.match_encode_row(spacer, target, pam_pattern = pam_pattern)
+        assert res.shape == (26,)
+
+        np.testing.assert_array_equal(cor.astype(bool), res)
+
     def test_more_encoding(self):
         spacer = Seq('U' + 'A' * 19, alphabet=generic_rna)
         target = Seq('A' * 20 + 'AGG', alphabet=generic_dna)
@@ -303,6 +329,24 @@ class TestMatchingEncoding(object):
                         [spacer, target],
                         [spacer, target]])
         hot_encoder = preprocessing.MatchingTransformer()
+        res = hot_encoder.transform(inp)
+
+        assert res.shape == (3, 20 + 1)
+
+        for row in range(3):
+            np.testing.assert_array_equal(cor.astype(bool), res[row, :])
+
+
+    def test_transforming_novel_pam(self):
+        spacer = Seq('U' + 'A' * 19, alphabet=generic_rna)
+        target = Seq('A' * 20 + 'AGGAAT', alphabet=generic_dna)
+
+        cor = np.array([False] + [True] * 20)
+
+        inp = np.array([[spacer, target],
+                        [spacer, target],
+                        [spacer, target]])
+        hot_encoder = preprocessing.MatchingTransformer(pam = 'NNGRRT')
         res = hot_encoder.transform(inp)
 
         assert res.shape == (3, 20 + 1)

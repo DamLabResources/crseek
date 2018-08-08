@@ -283,9 +283,7 @@ class TestCasOff(CasOffABC):
     def test_change_pam_short(self):
         FnCas9_pam = 'NG'
         spacer, seq_recs, cor = self.make_basic(pam = 'CG')
-        print(cor)
         res = utils.cas_offinder([spacer], 3, locus = seq_recs, pam = FnCas9_pam)
-        print(res)
         assert_frame_equal(res, cor)
 
     def test_make_record_key(self):

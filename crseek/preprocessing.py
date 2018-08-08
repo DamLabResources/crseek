@@ -3,6 +3,9 @@ import numpy as np
 import pandas as pd
 from Bio.Alphabet import generic_dna, generic_rna, RNAAlphabet, DNAAlphabet, IUPAC
 from Bio.Seq import Seq
+from Bio.Data import IUPACData
+import re
+
 from sklearn.base import BaseEstimator
 from crseek import exceptions
 from crseek import utils
@@ -14,6 +17,14 @@ class MatchingTransformer(BaseEstimator):
     represents the pair as a set of 20 + 1 binary elements. Each position is simply scored as "matching" or not. The 21st
     position represents the NGG PAM site.
         """
+
+    def __init__(self, pam = 'NGG', spacer_length = 20):
+
+        self.pam = pam
+        self.pam_pattern = make_pam_pattern(pam)
+        self.spacer_length = spacer_length
+
+        super().__init__()
 
     def fit(self, X, y):
         """ fit
@@ -46,11 +57,13 @@ class MatchingTransformer(BaseEstimator):
 
         """
 
-        check_proto_target_input(X)
+        check_proto_target_input(X, spacer_length = self.spacer_length,
+                                 pam_length = len(self.pam))
 
         encoded = []
         for row in range(X.shape[0]):
-            encoded.append(match_encode_row(X[row, 0].upper(), X[row, 1].upper()))
+            encoded.append(match_encode_row(X[row, 0].upper(), X[row, 1].upper(),
+                                            pam_pattern = self.pam_pattern))
 
         return np.array(encoded)
 
@@ -108,7 +121,8 @@ class OneHotTransformer(BaseEstimator):
         return np.array(encoded)
 
 
-def locate_hits_in_array(X, estimator, exhaustive=False, mismatches=6, openci_devices=None):
+def locate_hits_in_array(X, estimator, exhaustive=False, mismatches=6, openci_devices=None,
+                         pam='NRG', template = 'NNNNNNNNNNNNNNNNNNNN'):
     """ Utilizes cas-offinder to find the likeliest hit of the gRNA in a long
     sequence. It uses the provided estimator to rank each potential hit.
 
@@ -129,6 +143,9 @@ def locate_hits_in_array(X, estimator, exhaustive=False, mismatches=6, openci_de
     openci_devices : str or None
         Formatted string of device-IDs acceptable to cas-offinder. If None
         the first choice is picked from the OpenCI device list.
+    pam : str
+        PAM to search for during matching.
+
     Returns
     -------
 
@@ -156,7 +173,7 @@ def locate_hits_in_array(X, estimator, exhaustive=False, mismatches=6, openci_de
                            axis=0)
     else:
         result = utils.cas_offinder(spacers, mismatches, locus=seqs,
-                                    openci_devices=openci_devices)
+                                    openci_devices=openci_devices, pam=pam)
 
     if len(result.index) > 0:
         result['score'] = estimator.predict_proba(result.values)
@@ -173,7 +190,7 @@ def locate_hits_in_array(X, estimator, exhaustive=False, mismatches=6, openci_de
     return X.values, loc.values, scores.values
 
 
-def check_proto_target_input(X):
+def check_proto_target_input(X, spacer_length=20, pam_length=3):
     """ Basic input parameter checking.
     Parameters
     ----------
@@ -192,8 +209,8 @@ def check_proto_target_input(X):
     spacer_lens = np.array([len(val) for val in X[:, 0]])
     target_lens = np.array([len(val) for val in X[:, 1]])
 
-    assert np.all(spacer_lens == 20)
-    assert np.all(target_lens == 23)
+    assert np.all(spacer_lens == spacer_length)
+    assert np.all(target_lens == spacer_length+pam_length)
 
     _ = [exceptions._check_seq_alphabet(spacer, base_alphabet=RNAAlphabet) for spacer in X[:, 0]]
     _ = [exceptions._check_seq_alphabet(target, base_alphabet=DNAAlphabet) for target in X[:, 1]]
@@ -201,13 +218,25 @@ def check_proto_target_input(X):
     return True
 
 
-def match_encode_row(spacer, target):
+def make_pam_pattern(pam):
+    pattern = ''
+    for nt in pam:
+        value = IUPACData.ambiguous_dna_values[nt]
+        if len(value) == 1:
+            pattern += value
+        else:
+            pattern += '[%s]' % value
+    return '.*' + pattern + '$'
+
+
+def match_encode_row(spacer, target, pam_pattern = None):
     """ Does the actual match-based encoding.
 
     Parameters
     ----------
     spacer : Seq
     target : Seq
+    pam : str
 
     Returns
     -------
@@ -215,10 +244,11 @@ def match_encode_row(spacer, target):
 
     """
 
-    # TODO: Deal with different PAMs
+    if pam_pattern is None:
+        pam_pattern = make_pam_pattern('NGG')
 
     features = [g == l for g, l in zip(spacer.back_transcribe(), target)]
-    features.append(target[-2:] == 'GG')
+    features.append(re.match(pam_pattern, str(target)) is not None)
 
     return np.array(features)
 

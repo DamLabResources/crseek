@@ -287,7 +287,6 @@ class TestPositionalAgg(object):
         est = estimators.MismatchEstimator.build_pipeline(miss_tail=0)
 
         results = evaluators.positional_aggregation(target_df, spacer_df, est, overlap=-1)
-        print(results.columns)
         results['StrSpacer'] = results['spacer'].map(str)
         cor_df['StrSpacer'] = cor_df['spacer'].map(str)
 

@@ -126,7 +126,8 @@ class MismatchEstimator(SequenceBase):
 
         """
 
-        pipe = Pipeline(steps=[('transform', MatchingTransformer()),
+        pipe = Pipeline(steps=[('transform', MatchingTransformer(spacer_length = kwargs.pop('spacer_length', 20),
+                                                                 pam = kwargs.pop('pam', 'NGG'))),
                                ('predict', MismatchEstimator(**kwargs))])
         pipe.matcher = pipe.steps[1][1]
 
