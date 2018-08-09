@@ -148,11 +148,11 @@ class TestMismatchEstimator(BaseChecker):
     prob = None
 
     estimator = estimators.MismatchEstimator(seed_len=4, miss_seed=0,
-                                             miss_tail=2, pam='NGG')
+                                             miss_tail=2, pam='NRG')
     pipeline = estimators.MismatchEstimator.build_pipeline(seed_len=4,
                                                            miss_seed=0,
                                                            miss_tail=2,
-                                                           pam='NGG')
+                                                           pam='NRG')
 
     def test_init(self):
         mod = estimators.MismatchEstimator()
@@ -161,7 +161,7 @@ class TestMismatchEstimator(BaseChecker):
         assert self.pipeline.matcher.seed_len == 4
         assert self.pipeline.matcher.miss_seed == 0
         assert self.pipeline.matcher.miss_tail == 2
-        assert self.pipeline.matcher.pam == 'NGG'
+        assert self.pipeline.matcher.pam == 'NRG'
 
     def test_load_yaml(self):
         d = {'Seed Length': 5,

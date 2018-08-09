@@ -64,7 +64,7 @@ class MismatchEstimator(SequenceBase):
 
     def __init__(self, seed_len=4, miss_seed=0,
                  miss_tail=2, miss_non_seed=3,
-                 require_pam=True, pam='NGG'):
+                 require_pam=True, pam='NRG'):
         """
 
         Parameters
@@ -108,7 +108,7 @@ class MismatchEstimator(SequenceBase):
                   'miss_seed': data.get('Seed Misses', 0),
                   'miss_non_seed': data.get('NonSeed Misses', 2),
                   'miss_tail': data.get('Tail Misses', 3),
-                  'pam': data.get('PAM', 'NGG')}
+                  'pam': data.get('PAM', 'NRG')}
 
         return MismatchEstimator.build_pipeline(**kwargs)
 
@@ -127,7 +127,7 @@ class MismatchEstimator(SequenceBase):
         """
 
         pipe = Pipeline(steps=[('transform', MatchingTransformer(spacer_length = kwargs.pop('spacer_length', 20),
-                                                                 pam = kwargs.pop('pam', 'NGG'))),
+                                                                 pam = kwargs.pop('pam', 'NRG'))),
                                ('predict', MismatchEstimator(**kwargs))])
         pipe.matcher = pipe.steps[1][1]
 
